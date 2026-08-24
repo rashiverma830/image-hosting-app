@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Create Item</title>
+    <!-- Use separate dashboard CSS to prevent interference -->
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="dashboard-body">
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon"></div>
+                    <span>Enfso</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active"><span class="icon">⊞</span> Dashboard</a>
+                <a href="#" class="nav-item"><span class="icon">📈</span> Bids</a>
+                <a href="#" class="nav-item"><span class="icon">♡</span> Saved</a>
+                <a href="#" class="nav-item"><span class="icon">👥</span> Creators</a>
+                <a href="#" class="nav-item"><span class="icon">👛</span> Wallet</a>
+            </nav>
+            
+            <div class="guidance-card">
+                <div class="guidance-icon">ℹ</div>
+                <h4>Need Guidance?</h4>
+                <p>See the video, it can help you to understand the application.</p>
+                <button class="btn-play">Play Video</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-wrapper">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menuToggle">☰</button>
+                    <h1>Create Item</h1>
+                    <div class="breadcrumbs">
+                        <span class="text-purple">Dashboard</span> / <span>Create Item</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="search-bar">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" placeholder="Search">
+                    </div>
+                    <div class="user-actions">
+                        <button class="icon-btn">⚙</button>
+                        <button class="icon-btn notif">🔔<span class="badge">9</span></button>
+                        <div class="user-profile">
+                            <div class="user-info">
+                                <span class="name">Nella Vita</span>
+                                <span class="role">User</span>
+                            </div>
+                            <img src="https://ui-avatars.com/api/?name=Nella+Vita&background=0D8ABC&color=fff" alt="User" class="avatar">
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <main class="dashboard-content">
+                <div class="top-section">
+                    <!-- Upload Box -->
+                    <div class="upload-section">
+                        <h3>Upload File</h3>
+                        <div class="upload-box" id="dropZone" style="transition: border-color 0.3s; cursor: pointer;" onclick="document.getElementById('fileInput').click()">
+                            <div class="upload-icon">↑</div>
+                            <p>Drag & drop files/folders here or click to browse</p>
+                            <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                            <button class="btn-dark" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Browse File</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview File -->
+                    <div class="preview-section">
+                        <h3>Review Image</h3>
+                        <div class="preview-card">
+                            <div class="preview-img-container">
+                                <img src="image/full-screen-size.png" id="previewImg" alt="Preview">
+                                <div class="preview-overlay">
+                                    <div class="bid-info">
+                                        <span>Current Bid</span>
+                                        <strong>2.55 ETH</strong>
+                                    </div>
+                                    <div class="auction-info">
+                                        <span>Auction Time</span>
+                                        <strong>20h 45m 15s</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="preview-details">
+                                <h4>Abstract 3D Design</h4>
+                                <div class="creator">
+                                    <img src="https://ui-avatars.com/api/?name=Nella+Vita" alt="Creator">
+                                    <span>Nella Vita</span>
+                                </div>
+                                <div class="preview-actions">
+                                    <button class="btn-outline" id="btnCopyImage">Copy Image</button>
+                                    <button class="btn-purple">Place a Bid</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Purchase Type -->
+                <div class="purchase-type-section">
+                    <h3>Purchase Type</h3>
+                    <div class="type-cards">
+                        <label class="type-card active">
+                            <input type="radio" name="purchase_type" checked>
+                            <span class="radio-custom"></span>
+                            <div class="type-info">
+                                <h4>Fixed Price</h4>
+                                <p>Set fixed price for people to buy your product instantly</p>
+                            </div>
+                        </label>
+                        <label class="type-card">
+                            <input type="radio" name="purchase_type">
+                            <span class="radio-custom"></span>
+                            <div class="type-info">
+                                <h4>Timed Auction</h4>
+                                <p>Set fixed price for people to buy your product instantly</p>
+                            </div>
+                        </label>
+                        <label class="type-card">
+                            <input type="radio" name="purchase_type">
+                            <span class="radio-custom"></span>
+                            <div class="type-info">
+                                <h4>Open for Bids</h4>
+                                <p>Set fixed price for people to buy your product instantly</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Main Details -->
+                <div class="main-details-section">
+                    <h3>Main Details</h3>
+                    <div class="form-grid">
+                        <div class="form-group title-group">
+                            <label>Title</label>
+                            <input type="text" value="Abstract 3D Design">
+                        </div>
+                        <div class="form-group price-group">
+                            <label>Price</label>
+                            <input type="text" value="Abstract 3D Design">
+                        </div>
+                        <div class="form-group">
+                            <label>Size</label>
+                            <input type="text" value="Abstract 3D Design">
+                        </div>
+                        <div class="form-group">
+                            <label>Propertie</label>
+                            <input type="text" value="Abstract 3D Design">
+                        </div>
+                        <div class="form-group">
+                            <label>Royality</label>
+                            <input type="text" value="Abstract 3D Design">
+                        </div>
+                        <div class="form-group">
+                            <label>Currency</label>
+                            <input type="text" value="Abstract 3D Design">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Description</label>
+                            <textarea rows="4"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="bottom-actions">
+                        <button class="btn-create">Create Item</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Script for dashboard interactivity -->
+    <script>
+        // Sidebar Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // File Upload & Preview & Copy Logic
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewImg = document.getElementById('previewImg');
+        const btnCopyImage = document.getElementById('btnCopyImage');
+        let currentImageBlob = null;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop zone
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = '#2F54EB';
+                dropZone.style.backgroundColor = '#EEF2FF';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = '#D9D9D9';
+                dropZone.style.backgroundColor = '#FAFAFA';
+            }, false);
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        // Handle file input change
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            let imageFile = null;
+            // Find the first image file
+            for (let i = 0; i < files.length; i++) {
+                if (files[i].type.startsWith('image/')) {
+                    imageFile = files[i];
+                    break;
+                }
+            }
+            
+            if (imageFile) {
+                currentImageBlob = imageFile;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                };
+                reader.readAsDataURL(imageFile);
+            } else {
+                alert("Koi valid image file nahi mili. Kripya image upload karein.");
+            }
+        }
+
+        // Handle Copy Image
+        btnCopyImage.addEventListener('click', async () => {
+            if (!currentImageBlob) {
+                alert("Copy karne ke liye pehle ek nayi image upload karein!");
+                return;
+            }
+            
+            try {
+                // Clipboard API requires image/png format
+                let copyBlob = currentImageBlob;
+                if (currentImageBlob.type !== 'image/png') {
+                    // Convert to PNG using Canvas
+                    const bitmap = await createImageBitmap(currentImageBlob);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = bitmap.width;
+                    canvas.height = bitmap.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(bitmap, 0, 0);
+                    
+                    copyBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                }
+                
+                await navigator.clipboard.write([
+                    new ClipboardItem({
+                        'image/png': copyBlob
+                    })
+                ]);
+                
+                const originalText = btnCopyImage.innerText;
+                btnCopyImage.innerText = "Copied ✓";
+                setTimeout(() => btnCopyImage.innerText = originalText, 2000);
+            } catch (err) {
+                console.error("Failed to copy image: ", err);
+                alert("Image copy fail ho gaya. Shayad browser permission required hai.");
+            }
+        });
+    </script>
+</body>
+</html>
