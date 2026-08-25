@@ -80,10 +80,7 @@ const Profile = () => {
                 </div>
                 <nav className="sidebar-nav">
                     <Link to="/dashboard" className="nav-item"><span className="icon">⊞</span> Dashboard</Link>
-                    <Link to="/bids" className="nav-item"><span className="icon">📈</span> Bids</Link>
                     <Link to="/saved" className="nav-item"><span className="icon">♡</span> Saved</Link>
-                    <Link to="/creators" className="nav-item"><span className="icon">👥</span> Creators</Link>
-                    <Link to="/wallet" className="nav-item"><span className="icon">👛</span> Wallet</Link>
                 </nav>
             </aside>
             <div className="main-wrapper">

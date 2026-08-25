@@ -8,10 +8,27 @@ const Dashboard = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [previewSrc, setPreviewSrc] = useState('/image/full-screen-size.png');
     const [currentImageBlob, setCurrentImageBlob] = useState(null);
+    const [uploadedUrl, setUploadedUrl] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false);
     const [copyStatus, setCopyStatus] = useState('Copy Image');
     const [copyLinkStatus, setCopyLinkStatus] = useState('Copy Link');
     const fileInputRef = useRef(null);
+
+    const [bidItems, setBidItems] = useState([]);
+
+    // Fetch images from database on load
+    useEffect(() => {
+        fetch('http://localhost:5000/api/images')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setBidItems(data);
+                } else {
+                    console.error("Backend did not return an array:", data);
+                }
+            })
+            .catch(err => console.error("Failed to load images from DB:", err));
+    }, []);
 
     // Sidebar Toggle
     const toggleSidebar = () => {
@@ -49,7 +66,7 @@ const Dashboard = () => {
         handleFiles(e.target.files);
     };
 
-    const handleFiles = (files) => {
+    const handleFiles = async (files) => {
         let imageFile = null;
         for (let i = 0; i < files.length; i++) {
             if (files[i].type.startsWith('image/')) {
@@ -60,11 +77,33 @@ const Dashboard = () => {
         
         if (imageFile) {
             setCurrentImageBlob(imageFile);
+            setUploadedUrl(null); // Reset URL until uploaded
             const reader = new FileReader();
             reader.onload = (e) => {
                 setPreviewSrc(e.target.result);
             };
             reader.readAsDataURL(imageFile);
+            
+            // Upload to backend to get real URL
+            try {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                const response = await fetch('http://localhost:5000/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.url) {
+                    setUploadedUrl(data.url);
+                    
+                    // Add the new image to the bottom cards from MongoDB
+                    if (data.image) {
+                        setBidItems(prev => [data.image, ...prev]);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to upload image to backend:", err);
+            }
         } else {
             alert("Koi valid image file nahi mili. Kripya image upload karein.");
         }
@@ -77,20 +116,29 @@ const Dashboard = () => {
         }
         
         try {
-            // Copy the data URL to clipboard so it can be pasted in the browser
-            await navigator.clipboard.writeText(previewSrc);
+            // Copy actual image to clipboard
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    [currentImageBlob.type]: currentImageBlob
+                })
+            ]);
             
-            setCopyStatus("URL Copied ✓");
+            setCopyStatus("Image Copied ✓");
             setTimeout(() => setCopyStatus("Copy Image"), 2000);
         } catch (err) {
             console.error("Failed to copy image: ", err);
-            alert("Image URL copy fail ho gaya. Shayad browser permission required hai.");
+            alert("Image copy fail ho gaya. Shayad browser permission required hai.");
         }
     };
 
     const handleCopyLink = async () => {
+        if (!uploadedUrl) {
+            alert("Link copy karne ke liye pehle image upload hone ka wait karein!");
+            return;
+        }
+
         try {
-            await navigator.clipboard.writeText('http://localhost:5173/dashboard');
+            await navigator.clipboard.writeText(uploadedUrl);
             setCopyLinkStatus('Link Copied ✓');
             setTimeout(() => setCopyLinkStatus('Copy Link'), 2000);
         } catch (err) {
@@ -98,13 +146,6 @@ const Dashboard = () => {
             alert("Link copy fail ho gaya.");
         }
     };
-
-    useEffect(() => {
-        document.body.classList.add('dashboard-body');
-        return () => {
-            document.body.classList.remove('dashboard-body');
-        };
-    }, []);
 
     return (
         <div className="dashboard-layout">
@@ -118,10 +159,7 @@ const Dashboard = () => {
                 
                 <nav className="sidebar-nav">
                     <Link to="/dashboard" className="nav-item active"><span className="icon">⊞</span> Dashboard</Link>
-                    <Link to="/bids" className="nav-item"><span className="icon">📈</span> Bids</Link>
                     <Link to="/saved" className="nav-item"><span className="icon">♡</span> Saved</Link>
-                    <Link to="/creators" className="nav-item"><span className="icon">👥</span> Creators</Link>
-                    <Link to="/wallet" className="nav-item"><span className="icon">👛</span> Wallet</Link>
                 </nav>
                 
                 <div className="guidance-card">
@@ -133,7 +171,7 @@ const Dashboard = () => {
             </aside>
 
             <div className="main-wrapper">
-                <Header title="Create Item" breadcrumbs="Create Item" onToggleSidebar={toggleSidebar} />
+                <Header title="Dashboard" breadcrumbs="Dashboard" onToggleSidebar={toggleSidebar} />
                 <main className="dashboard-content">
                     <div className="top-section">
                         <div className="upload-section">
@@ -199,90 +237,58 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div className="purchase-type-section">
-                        <h3>Purchase Type</h3>
-                        <div className="type-cards">
-                            <label className="type-card active">
-                                <input type="radio" name="purchase_type" defaultChecked />
-                                <span className="radio-custom"></span>
-                                <div className="type-info">
-                                    <h4>Fixed Price</h4>
-                                    <p>Set fixed price for people to buy your product instantly</p>
-                                </div>
-                            </label>
-                            <label className="type-card">
-                                <input type="radio" name="purchase_type" />
-                                <span className="radio-custom"></span>
-                                <div className="type-info">
-                                    <h4>Timed Auction</h4>
-                                    <p>Set fixed price for people to buy your product instantly</p>
-                                </div>
-                            </label>
-                            <label className="type-card">
-                                <input type="radio" name="purchase_type" />
-                                <span className="radio-custom"></span>
-                                <div className="type-info">
-                                    <h4>Open for Bids</h4>
-                                    <p>Set fixed price for people to buy your product instantly</p>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
 
-                    <div className="main-details-section">
-                        <h3>Main Details</h3>
-                        <div className="form-grid">
-                            <div className="form-group title-group">
-                                <label>Title</label>
-                                <input type="text" defaultValue="Abstract 3D Design" />
+
+                    <h3 className="section-title" style={{ marginTop: '40px', marginBottom: '20px' }}>Current Bidding List</h3>
+                    <div className="bids-grid">
+                        {bidItems.map(item => {
+                            const savedList = JSON.parse(localStorage.getItem('savedItems') || '[]');
+                            const isSaved = savedList.some(s => s.id === item.id);
+                            return (
+                            <div key={item.id} className="bid-card">
+                                <div className="bid-img" style={{ height: '220px', position: 'relative' }}>
+                                    <img src={item.img} alt="Uploaded Item" />
+                                    <button 
+                                        onClick={(e) => {
+                                            const saved = JSON.parse(localStorage.getItem('savedItems') || '[]');
+                                            if (saved.some(s => s.id === item.id)) {
+                                                localStorage.setItem('savedItems', JSON.stringify(saved.filter(s => s.id !== item.id)));
+                                                e.target.style.color = '#ccc';
+                                            } else {
+                                                localStorage.setItem('savedItems', JSON.stringify([...saved, item]));
+                                                e.target.style.color = '#FF4D4F';
+                                            }
+                                        }}
+                                        style={{
+                                            position: 'absolute', top: '10px', right: '10px', background: 'white', 
+                                            border: 'none', borderRadius: '50%', width: '35px', height: '35px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', 
+                                            color: isSaved ? '#FF4D4F' : '#ccc', fontSize: '1.2rem', transition: 'color 0.2s'
+                                        }}
+                                        title="Save Item"
+                                    >
+                                        ♥
+                                    </button>
+                                </div>
+                                <div className="bid-info-box" style={{ padding: '15px' }}>
+                                    <button 
+                                        className="btn-purple full-btn" 
+                                        onClick={(e) => {
+                                            const btn = e.target;
+                                            navigator.clipboard.writeText(item.img)
+                                                .then(() => {
+                                                    const oldText = btn.innerText;
+                                                    btn.innerText = 'Copied ✓';
+                                                    setTimeout(() => btn.innerText = oldText, 2000);
+                                                });
+                                        }}
+                                    >
+                                        Copy Link
+                                    </button>
+                                </div>
                             </div>
-                            <div className="form-group price-group">
-                                <label>Price</label>
-                                <input type="text" defaultValue="2.55 ETH" />
-                            </div>
-                            <div className="form-group">
-                                <label>Size</label>
-                                <input type="text" defaultValue="Abstract 3D Design" />
-                            </div>
-                            <div className="form-group">
-                                <label>Propertie</label>
-                                <input type="text" defaultValue="Abstract 3D Design" />
-                            </div>
-                            <div className="form-group">
-                                <label>Royality</label>
-                                <input type="text" defaultValue="Abstract 3D Design" />
-                            </div>
-                            <div className="form-group">
-                                <label>Currency</label>
-                                <input type="text" defaultValue="Abstract 3D Design" />
-                            </div>
-                            <div className="form-group full-width">
-                                <label>Description</label>
-                                <textarea rows="4"></textarea>
-                            </div>
-                        </div>
-                        
-                        <div className="bottom-actions">
-                            <button className="btn-create" onClick={() => {
-                                const title = document.querySelector('.title-group input').value || 'Untitled Item';
-                                const price = document.querySelector('.price-group input').value || '0 ETH';
-                                const purchaseType = document.querySelector('input[name="purchase_type"]:checked')?.nextElementSibling?.nextElementSibling?.querySelector('h4')?.innerText || 'Fixed Price';
-                                
-                                const newItem = {
-                                    id: Date.now(),
-                                    title: title,
-                                    price: price,
-                                    status: purchaseType,
-                                    img: previewSrc
-                                };
-                                
-                                const existingItems = JSON.parse(localStorage.getItem('userItems') || '[]');
-                                localStorage.setItem('userItems', JSON.stringify([newItem, ...existingItems]));
-                                
-                                alert('Item created successfully!');
-                                navigate('/profile');
-                            }}>Create Item</button>
-                        </div>
+                        )})}
                     </div>
                 </main>
             </div>

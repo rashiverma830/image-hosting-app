@@ -11,16 +11,17 @@ const Saved = () => {
         };
     }, []);
 
-    const [savedItems, setSavedItems] = useState([
-        { id: 1, title: 'Mystic Mountain', price: '1.50 ETH', creator: 'John Doe', img: 'https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=300&auto=format&fit=crop' },
-        { id: 2, title: 'Ethereal Forest', price: '0.90 ETH', creator: 'Anna Smith', img: 'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=300&auto=format&fit=crop' },
-        { id: 3, title: 'Digital Avatar #45', price: '4.20 ETH', creator: 'CryptoKing', img: 'https://images.unsplash.com/photo-1634152962476-4b8a00e1915c?q=80&w=300&auto=format&fit=crop' },
-        { id: 4, title: 'Retro Vibes', price: '0.45 ETH', creator: 'NeonDreams', img: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=300&auto=format&fit=crop' },
-        { id: 5, title: 'Abstract Fluid', price: '2.10 ETH', creator: 'ArtMaster', img: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=300&auto=format&fit=crop' },
-    ]);
+    const [savedItems, setSavedItems] = useState([]);
+    
+    useEffect(() => {
+        const loadedItems = JSON.parse(localStorage.getItem('savedItems') || '[]');
+        setSavedItems(loadedItems);
+    }, []);
 
     const handleRemove = (id) => {
-        setSavedItems(savedItems.filter(item => item.id !== id));
+        const updated = savedItems.filter(item => item.id !== id);
+        setSavedItems(updated);
+        localStorage.setItem('savedItems', JSON.stringify(updated));
     };
 
     return (
@@ -31,10 +32,7 @@ const Saved = () => {
                 </div>
                 <nav className="sidebar-nav">
                     <Link to="/dashboard" className="nav-item"><span className="icon">⊞</span> Dashboard</Link>
-                    <Link to="/bids" className="nav-item"><span className="icon">📈</span> Bids</Link>
                     <Link to="/saved" className="nav-item active"><span className="icon">♡</span> Saved</Link>
-                    <Link to="/creators" className="nav-item"><span className="icon">👥</span> Creators</Link>
-                    <Link to="/wallet" className="nav-item"><span className="icon">👛</span> Wallet</Link>
                 </nav>
             </aside>
             <div className="main-wrapper">
