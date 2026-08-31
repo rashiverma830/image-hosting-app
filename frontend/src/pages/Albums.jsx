@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { 
   Home, 
@@ -15,31 +15,37 @@ import {
 } from 'lucide-react';
 import '../styles/dashboard.css';
 
-const Saved = () => {
+const Albums = () => {
+    const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const toggleSidebar = () => {
-        setSidebarOpen(!sidebarOpen);
+    
+    const [albums, setAlbums] = useState([
+        { id: 1, title: 'Nature', count: '124 images', img: 'https://picsum.photos/seed/nature/500/300' },
+        { id: 2, title: 'Architecture', count: '45 images', img: 'https://picsum.photos/seed/architecture/500/300' },
+        { id: 3, title: 'Products', count: '89 images', img: 'https://picsum.photos/seed/products/500/300' },
+        { id: 4, title: 'Portraits', count: '12 images', img: 'https://picsum.photos/seed/portraits/500/300' },
+        { id: 5, title: 'Interiors', count: '23 images', img: 'https://picsum.photos/seed/interiors/500/300' },
+        { id: 6, title: 'Cars', count: '34 images', img: 'https://picsum.photos/seed/cars/500/300' },
+        { id: 7, title: 'Minimal', count: '18 images', img: 'https://picsum.photos/seed/minimal/500/300' },
+    ]);
+
+    const handleAddAlbum = () => {
+        const title = window.prompt("Enter new album name:");
+        if (title) {
+            const newAlbum = {
+                id: Date.now(),
+                title: title,
+                count: '0 images',
+                img: `https://picsum.photos/seed/${title.toLowerCase().replace(/\s+/g, '')}/500/300`
+            };
+            setAlbums([...albums, newAlbum]);
+        }
     };
 
     useEffect(() => {
         document.body.classList.add('dashboard-body');
-        return () => {
-            document.body.classList.remove('dashboard-body');
-        };
+        return () => document.body.classList.remove('dashboard-body');
     }, []);
-
-    const [savedItems, setSavedItems] = useState([]);
-    
-    useEffect(() => {
-        const loadedItems = JSON.parse(localStorage.getItem('savedItems') || '[]');
-        setSavedItems(loadedItems);
-    }, []);
-
-    const handleRemove = (id) => {
-        const updated = savedItems.filter(item => item.id !== id);
-        setSavedItems(updated);
-        localStorage.setItem('savedItems', JSON.stringify(updated));
-    };
 
     return (
         <div className="dashboard-layout">
@@ -68,7 +74,7 @@ const Saved = () => {
                     <NavLink to="/shared-links" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><LinkIcon className="icon" size={20} /> Shared Links</NavLink>
                     <NavLink to="/trash" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Trash2 className="icon" size={20} /> Trash</NavLink>
                     
-                    
+                    <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', marginTop: '20px', marginBottom: '10px', paddingLeft: '20px', letterSpacing: '0.05em' }}>TOOLS</h3>
                     <NavLink to="/analytics" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><BarChart2 className="icon" size={20} /> Analytics</NavLink>
                     <NavLink to="/image-tools" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Wand2 className="icon" size={20} /> Image Tools</NavLink>
                     <NavLink to="/api-access" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Code className="icon" size={20} /> API Access</NavLink>
@@ -89,67 +95,51 @@ const Saved = () => {
                 </div>
             </aside>
             <div className="main-wrapper">
-                <Header title="Saved Items" breadcrumbs="Saved" />
+                <Header title="Albums" breadcrumbs="Albums" onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
                 <main className="dashboard-content">
-                    <div className="saved-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h3 className="section-title" style={{ margin: 0 }}>Your Collection ({savedItems.length})</h3>
-                        <div className="filter-options">
-                            <select style={{ padding: '8px 15px', borderRadius: '20px', border: '1px solid #E5E5E5', outline: 'none' }}>
-                                <option>Recently Added</option>
-                                <option>Price: Low to High</option>
-                                <option>Price: High to Low</option>
-                            </select>
+                    
+                    <div className="bids-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '30px', marginTop: '20px' }}>
+                        {albums.map(album => (
+                            <div key={album.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ height: '160px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                                    <img src={album.img} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1A1A1A' }} className="page-title">{album.title}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '4px' }}>{album.count}</div>
+                                </div>
+                            </div>
+                        ))}
+                        
+                        {/* Add New Album Card */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div 
+                                onClick={handleAddAlbum}
+                                style={{ 
+                                height: '160px', 
+                                borderRadius: '12px', 
+                                border: '1px solid #E5E5E5',
+                                background: '#FAFAFA',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #999', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </div>
+                                <span style={{ fontSize: '0.9rem', fontWeight: '500', color: '#333' }}>Add New Album</span>
+                            </div>
                         </div>
                     </div>
-
-                    {savedItems.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '50px', background: 'white', borderRadius: '16px', color: '#999' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>💔</div>
-                            <h3>No saved items yet</h3>
-                            <p>Go explore the marketplace and save your favorites!</p>
-                        </div>
-                    ) : (
-                        <div className="bids-grid">
-                            {savedItems.map(item => (
-                                <div key={item.id} className="bid-card relative">
-                                    <div className="bid-img">
-                                        <img src={item.img} alt={item.title} />
-                                        <button 
-                                            onClick={() => handleRemove(item.id)}
-                                            style={{
-                                                position: 'absolute', top: '10px', right: '10px', background: 'white', 
-                                                border: 'none', borderRadius: '50%', width: '35px', height: '35px',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', color: '#FF4D4F', fontSize: '1.2rem'
-                                            }}
-                                            title="Remove from saved"
-                                        >
-                                            ♥
-                                        </button>
-                                    </div>
-                                    <div className="bid-info-box">
-                                        <h4 style={{ marginBottom: '5px' }}>{item.title}</h4>
-                                        <div style={{ fontSize: '0.8rem', color: '#999', marginBottom: '15px' }}>by {item.creator}</div>
-                                        
-                                        <div className="bid-stats">
-                                            <div className="stat">
-                                                <span>Price</span>
-                                                <strong>{item.price}</strong>
-                                            </div>
-                                        </div>
-                                        <button className="btn-purple full-btn">Place a Bid</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    
                 </main>
             </div>
         </div>
     );
 };
 
-export default Saved;
-
-
-
+export default Albums;

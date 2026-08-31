@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Header = ({ title, breadcrumbs, onToggleSidebar }) => {
+    const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -38,17 +39,16 @@ const Header = ({ title, breadcrumbs, onToggleSidebar }) => {
     };
 
     return (
-        <header className="top-header">
-            <div className="header-left">
-                {title === 'Create Item' && <button className="menu-toggle" id="menuToggle" onClick={onToggleSidebar}>☰</button>}
-                <h1>{title}</h1>
-                <div className="breadcrumbs">
-                    <span className="text-purple">Dashboard</span> / <span>{breadcrumbs}</span>
-                </div>
-            </div>
-            <div className="header-right">
-                <div className="search-bar">
-                    <span className="search-icon" style={{ fontSize: '1.2rem', marginLeft: '5px' }}>🔍</span>
+        <header className="top-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '20px', paddingTop: '40px', paddingRight: '40px', paddingBottom: '0px', paddingLeft: '40px' }}>
+            {/* Top Row: Search and User Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div className="search-bar" style={{ flex: 1, maxWidth: '600px', background: 'white', borderRadius: '30px', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                    <span className="search-icon" style={{ display: 'flex', alignItems: 'center', color: '#666' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
                     <input 
                         type="text" 
                         placeholder="Search..." 
@@ -59,15 +59,15 @@ const Header = ({ title, breadcrumbs, onToggleSidebar }) => {
                                 alert(`Searching for: ${searchQuery}`);
                             }
                         }}
+                        style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '1rem', color: '#333' }}
                     />
                 </div>
-                <div className="user-actions">
-                    <Link to="/settings">
-                        <button className="icon-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                        </button>
-                    </Link>
-                    
+                
+                <div className="user-actions" style={{ display: 'flex', alignItems: 'center', gap: '20px', marginLeft: '20px' }}>
+                    <button className="icon-btn" onClick={() => document.body.classList.toggle('dark-mode')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Toggle Dark Mode">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    </button>
+
                     <div style={{ position: 'relative' }}>
                         <button className="icon-btn notif" onClick={handleNotificationClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ fontSize: '1.2rem' }}>🔔</span>
@@ -126,6 +126,79 @@ const Header = ({ title, breadcrumbs, onToggleSidebar }) => {
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* Bottom Row: Title and Breadcrumbs */}
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '30px' }}>
+                <div className="header-left" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    {title === 'Create Item' && <button className="menu-toggle" id="menuToggle" onClick={onToggleSidebar}>☰</button>}
+                    
+                    {title === 'Dashboard' ? (
+                        <>
+                            <h1 style={{ margin: 0, fontSize: '1.8rem' }} className="page-title">Good morning, Nella! 👋</h1>
+                            <div className="breadcrumbs" style={{ marginTop: '5px', fontSize: '0.85rem', color: '#999' }}>
+                                Upload, manage and share your images securely.
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <h1 style={{ margin: 0, fontSize: '1.8rem' }} className="page-title">{title}</h1>
+                            <div className="breadcrumbs" style={{ marginTop: '5px', fontSize: '0.85rem', color: '#999' }}>
+                                <span className="text-purple" style={{ color: '#6366f1' }}>Dashboard</span> / <span>{breadcrumbs}</span>
+                            </div>
+                        </>
+                    )}
+                </div>
+                
+                {title === 'Dashboard' && (
+                    <button className="btn-purple" style={{ flex: 'none', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '30px', border: 'none', background: '#6366f1', color: 'white', cursor: 'pointer', fontWeight: '600' }} onClick={() => navigate('/upload')}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        Upload Image
+                    </button>
+                )}
+                
+                {title === 'My Images' && (
+                    <div style={{ display: 'flex', gap: '15px' }}>
+                        <button style={{ background: 'white', border: '1px solid #E5E5E5', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', color: '#333', cursor: 'pointer' }}>
+                            New Folder
+                        </button>
+                        <button className="btn-purple" style={{ flex: 'none', width: 'auto', padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#6366f1', color: 'white', cursor: 'pointer', fontWeight: '600' }} onClick={() => navigate('/upload')}>
+                            Upload Images
+                        </button>
+                    </div>
+                )}
+                
+                {title === 'Albums' && (
+                    <button className="btn-purple" style={{ flex: 'none', width: 'auto', padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#6366f1', color: 'white', cursor: 'pointer', fontWeight: '600' }}>
+                        New Album
+                    </button>
+                )}
+                
+                {title === 'Shared Links' && (
+                    <button className="btn-purple" style={{ flex: 'none', width: 'auto', padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#6366f1', color: 'white', cursor: 'pointer', fontWeight: '600' }}>
+                        Create New Link
+                    </button>
+                )}
+                
+                {title === 'Analytics' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #E5E5E5', padding: '10px 15px', borderRadius: '8px', color: '#333', fontSize: '0.9rem', cursor: 'pointer' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        May 20, 2024 - May 26, 2024
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                )}
+                
+                {title === 'Trash' && (
+                    <div style={{ display: 'flex', gap: '15px' }}>
+                        <button onClick={() => window.dispatchEvent(new Event('restore-trash'))} style={{ background: 'white', border: '1px solid #E5E5E5', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', color: '#333', cursor: 'pointer' }}>
+                            Restore All
+                        </button>
+                        <button onClick={() => window.dispatchEvent(new Event('empty-trash'))} style={{ background: 'white', border: '1px solid #E5E5E5', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', color: '#333', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            Empty Trash
+                        </button>
+                    </div>
+                )}
             </div>
         </header>
     );

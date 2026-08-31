@@ -14,18 +14,10 @@ const Settings = () => {
     const [activeTab, setActiveTab] = useState('profile');
 
     return (
-        <div className="dashboard-layout">
-            <aside className="sidebar open" id="sidebar">
-                <div className="sidebar-header">
-                    <div className="logo"><div className="logo-icon"></div><span>Lumina</span></div>
-                </div>
-                <nav className="sidebar-nav">
-                    <Link to="/dashboard" className="nav-item"><span className="icon">⊞</span> Dashboard</Link>
-                    <Link to="/saved" className="nav-item"><span className="icon">♡</span> Saved</Link>
-                </nav>
-            </aside>
+        <>
             
-            <div className="main-wrapper">
+            
+            <div className="main-wrapper" style={{ marginLeft: 0 }}>
                 <Header title="Settings" breadcrumbs="Settings" />
                 <main className="dashboard-content">
                     
@@ -150,9 +142,11 @@ const Settings = () => {
                     </div>
                 </main>
             </div>
-        </div>
+        </>
     );
 };
 
 export default Settings;
+
+
 

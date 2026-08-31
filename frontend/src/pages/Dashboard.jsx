@@ -1,6 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, NavLink } from 'react-router-dom';
 import Header from '../components/Header';
+import { 
+  Home, 
+  Image as ImageIcon, 
+  BookImage, 
+  Link as LinkIcon, 
+  Heart, 
+  Trash2, 
+  BarChart2, 
+  Wand2, 
+  Code,
+  Crown
+} from 'lucide-react';
 import '../styles/dashboard.css';
 
 const Dashboard = () => {
@@ -151,22 +163,47 @@ const Dashboard = () => {
         <div className="dashboard-layout">
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} id="sidebar">
                 <div className="sidebar-header">
-                    <div className="logo">
-                        <div className="logo-icon"></div>
-                        <span>Lumina</span>
+                    <div className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center' }}>
+                        <img src="/logo.png" alt="Lumina Logo" style={{ height: '32px', objectFit: 'contain' }} />
+                    </div>
+                </div>
+                
+                <div style={{ padding: '0 20px', marginBottom: '15px' }}>
+                    <div className="sidebar-search" style={{ background: 'white', borderRadius: '10px', padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', border: '1px solid #E5E5E5' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', color: '#666' }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </span>
+                        <input type="text" placeholder="Search..." style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '0.9rem', color: '#333' }} />
                     </div>
                 </div>
                 
                 <nav className="sidebar-nav">
-                    <Link to="/dashboard" className="nav-item active"><span className="icon">⊞</span> Dashboard</Link>
-                    <Link to="/saved" className="nav-item"><span className="icon">♡</span> Saved</Link>
+                    <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Home className="icon" size={20} /> Dashboard</NavLink>
+                    <NavLink to="/saved" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Heart className="icon" size={20} /> Favorites</NavLink>
+                    <NavLink to="/my-images" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><ImageIcon className="icon" size={20} /> My Images</NavLink>
+                    <NavLink to="/image/1" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><ImageIcon className="icon" size={20} /> Image Details</NavLink>
+                    <NavLink to="/albums" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><BookImage className="icon" size={20} /> Albums</NavLink>
+                    <NavLink to="/shared-links" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><LinkIcon className="icon" size={20} /> Shared Links</NavLink>
+                    <NavLink to="/trash" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Trash2 className="icon" size={20} /> Trash</NavLink>
+                    
+                    
+                    <NavLink to="/analytics" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><BarChart2 className="icon" size={20} /> Analytics</NavLink>
+                    <NavLink to="/image-tools" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Wand2 className="icon" size={20} /> Image Tools</NavLink>
+                    <NavLink to="/api-access" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Code className="icon" size={20} /> API Access</NavLink>
                 </nav>
                 
-                <div className="guidance-card">
-                    <div className="guidance-icon">ℹ</div>
-                    <h4>Need Guidance?</h4>
-                    <p>See the video, it can help you to understand the application.</p>
-                    <button className="btn-play">Play Video</button>
+                <div className="storage-card" style={{ margin: '20px', background: 'white', borderRadius: '16px', padding: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#666' }}>Storage Used</h4>
+                    <div style={{ marginBottom: '10px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111' }}>23.4 GB</span>
+                        <span style={{ fontSize: '0.85rem', color: '#999' }}> / 100 GB</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#f0f0f0', borderRadius: '10px', marginBottom: '15px', overflow: 'hidden' }}>
+                        <div style={{ width: '23.4%', height: '100%', background: '#6366f1', borderRadius: '10px' }}></div>
+                    </div>
+                    <button onClick={() => navigate('/pricing')} style={{ width: '100%', padding: '10px', background: '#EEF2FF', color: '#6366f1', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <Crown size={16} /> Upgrade Plan
+                    </button>
                 </div>
             </aside>
 
@@ -236,60 +273,81 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
+                    <div style={{ marginTop: '40px', marginBottom: '20px' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1A1A1A', marginBottom: '20px' }}>Your Library</h2>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                            <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #E5E5E5', width: 'fit-content' }}>
+                                <button onClick={() => navigate('/my-images')} style={{ background: 'none', border: 'none', borderBottom: '2px solid #6366f1', color: '#6366f1', padding: '10px 5px', fontWeight: '600', fontSize: '0.95rem', cursor: 'pointer' }}>All Images</button>
+                                <button style={{ background: 'none', border: 'none', color: '#666', padding: '10px 5px', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}>Recent</button>
+                                <button onClick={() => navigate('/saved')} style={{ background: 'none', border: 'none', color: '#666', padding: '10px 5px', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}>Favorites</button>
+                                <button onClick={() => navigate('/albums')} style={{ background: 'none', border: 'none', color: '#666', padding: '10px 5px', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}>Albums</button>
+                                <button onClick={() => navigate('/image/1')} style={{ background: 'none', border: 'none', color: '#666', padding: '10px 5px', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}>Image Details</button>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <button className="icon-btn" style={{ width: '38px', height: '38px', borderRadius: '8px' }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                </button>
+                                <button className="icon-btn" style={{ width: '38px', height: '38px', borderRadius: '8px' }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                                </button>
+                                <select style={{ padding: '8px 15px', borderRadius: '8px', border: '1px solid #E5E5E5', outline: 'none', background: 'white', color: '#333', fontWeight: '500', cursor: 'pointer', height: '38px' }}>
+                                    <option>Latest</option>
+                                    <option>Oldest</option>
+                                    <option>Size: L to S</option>
+                                    <option>Size: S to L</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
 
-
-
-                    <h3 className="section-title" style={{ marginTop: '40px', marginBottom: '20px' }}>Current Bidding List</h3>
-                    <div className="bids-grid">
+                    <div className="bids-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
                         {bidItems.map(item => {
                             const savedList = JSON.parse(localStorage.getItem('savedItems') || '[]');
                             const isSaved = savedList.some(s => s.id === item.id);
+                            
+                            const fileName = item.title ? item.title.toLowerCase().replace(/\s+/g, '-') + '.jpg' : `image-${item.id}.jpg`;
+                            const fileSize = (Math.random() * (5.0 - 0.5) + 0.5).toFixed(1) + ' MB';
+                            
                             return (
-                            <div key={item.id} className="bid-card">
-                                <div className="bid-img" style={{ height: '220px', position: 'relative' }}>
-                                    <img src={item.img} alt="Uploaded Item" />
+                            <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div className="bid-img" onClick={() => navigate(`/image/${item.id}`)} style={{ height: '180px', position: 'relative', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
+                                    <img src={item.img} alt="Uploaded Item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    
+                                    <div style={{ position: 'absolute', top: '10px', right: '10px', width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.7)', borderRadius: '4px', cursor: 'pointer' }}></div>
+                                    
                                     <button 
                                         onClick={(e) => {
+                                            e.stopPropagation();
                                             const saved = JSON.parse(localStorage.getItem('savedItems') || '[]');
                                             if (saved.some(s => s.id === item.id)) {
                                                 localStorage.setItem('savedItems', JSON.stringify(saved.filter(s => s.id !== item.id)));
-                                                e.target.style.color = '#ccc';
+                                                e.target.style.color = 'rgba(255,255,255,0.7)';
                                             } else {
                                                 localStorage.setItem('savedItems', JSON.stringify([...saved, item]));
                                                 e.target.style.color = '#FF4D4F';
                                             }
                                         }}
                                         style={{
-                                            position: 'absolute', top: '10px', right: '10px', background: 'white', 
-                                            border: 'none', borderRadius: '50%', width: '35px', height: '35px',
+                                            position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', 
+                                            border: 'none', borderRadius: '50%', width: '30px', height: '30px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', 
-                                            color: isSaved ? '#FF4D4F' : '#ccc', fontSize: '1.2rem', transition: 'color 0.2s'
+                                            cursor: 'pointer', color: isSaved ? '#FF4D4F' : 'rgba(255,255,255,0.7)', fontSize: '1rem', transition: 'color 0.2s'
                                         }}
                                         title="Save Item"
                                     >
                                         ♥
                                     </button>
                                 </div>
-                                <div className="bid-info-box" style={{ padding: '15px' }}>
-                                    <button 
-                                        className="btn-purple full-btn" 
-                                        onClick={(e) => {
-                                            const btn = e.target;
-                                            navigator.clipboard.writeText(item.img)
-                                                .then(() => {
-                                                    const oldText = btn.innerText;
-                                                    btn.innerText = 'Copied ✓';
-                                                    setTimeout(() => btn.innerText = oldText, 2000);
-                                                });
-                                        }}
-                                    >
-                                        Copy Link
-                                    </button>
+                                
+                                <div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1A1A1A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '2px' }}>{fileSize}</div>
                                 </div>
                             </div>
                         )})}
-                    </div>
+                    </div>    
                 </main>
             </div>
         </div>
