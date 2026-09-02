@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import Header from '../components/Header';
 import '../styles/dashboard.css';
 
 const Settings = () => {
+    const navigate = useNavigate();
+
     useEffect(() => {
         document.body.classList.add('dashboard-body');
         return () => {
@@ -15,11 +18,31 @@ const Settings = () => {
 
     return (
         <>
-            
-            
             <div className="main-wrapper" style={{ marginLeft: 0 }}>
                 <Header title="Settings" breadcrumbs="Settings" />
                 <main className="dashboard-content">
+                    <button 
+                        onClick={() => navigate(-1)} 
+                        style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            padding: '6px 14px', 
+                            background: '#F1F5F9', 
+                            border: '1px solid #E2E8F0', 
+                            borderRadius: '20px', 
+                            cursor: 'pointer', 
+                            fontWeight: '600', 
+                            fontSize: '0.82rem', 
+                            color: '#475569',
+                            marginBottom: '16px',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.background = '#E2E8F0'; e.currentTarget.style.color = '#0F172A'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#475569'; }}
+                    >
+                        <ArrowLeft size={14} /> Back
+                    </button>
                     
                     <div style={{ background: 'white', borderRadius: '16px', padding: '30px', border: '1px solid #F0F0F0', minHeight: '500px' }}>
                         {/* Tabs */}

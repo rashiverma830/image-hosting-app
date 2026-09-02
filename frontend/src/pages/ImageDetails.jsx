@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { 
+    ArrowLeft,
     Share2, 
     FolderPlus, 
     Edit2, 
@@ -19,6 +20,60 @@ const ImageDetails = () => {
     const [loading, setLoading] = useState(true);
     const [copyStatus, setCopyStatus] = useState('Copy Link');
     const [isSaved, setIsSaved] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    
+    const confirmDelete = () => {
+        setIsDeleting(true);
+        fetch(`http://localhost:5000/api/images/${displayImage.id || displayImage._id}`, {
+            method: 'DELETE'
+        })
+        .then(res => res.json())
+        .then(data => {
+            setIsDeleting(false);
+            if (data.success) {
+                setShowDeleteModal(false);
+                navigate('/dashboard');
+            } else {
+                alert("Failed to delete image.");
+            }
+        })
+        .catch(err => {
+            setIsDeleting(false);
+            console.error("Delete error:", err);
+            alert("Error deleting image.");
+        });
+    };
+    const handleDownloadImage = async () => {
+        const imageUrl = displayImage.img || displayImage.url;
+        if (!imageUrl) return;
+
+        try {
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            const saveName = fileName.includes('.') ? fileName : `${fileName}.jpg`;
+            a.download = saveName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+        } catch (err) {
+            console.error("Fetch blob failed, fallback download:", err);
+            const a = document.createElement('a');
+            a.href = imageUrl;
+            a.download = fileName;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    };
 
     useEffect(() => {
         document.body.classList.add('dashboard-body');
@@ -66,26 +121,56 @@ const ImageDetails = () => {
             <aside className="sidebar open" id="sidebar" style={{ display: 'none' }}></aside>
             <div className="main-wrapper" style={{ marginLeft: 0, width: '100%' }}>
                 
-                <div style={{ padding: '30px 40px 10px 40px' }}>
-                    <h1 style={{ margin: 0, fontSize: '1.8rem' }} className="page-title">Image Details</h1>
-                    <div className="breadcrumbs" style={{ marginTop: '5px', fontSize: '0.85rem', color: '#999' }}>
+                <div style={{ padding: '24px 40px 10px 40px' }}>
+                    <button 
+                        onClick={() => navigate(-1)} 
+                        style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            padding: '6px 14px', 
+                            background: '#F1F5F9', 
+                            border: '1px solid #E2E8F0', 
+                            borderRadius: '20px', 
+                            cursor: 'pointer', 
+                            fontWeight: '600', 
+                            fontSize: '0.82rem', 
+                            color: '#475569',
+                            marginBottom: '12px',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.background = '#E2E8F0'; e.currentTarget.style.color = '#0F172A'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#475569'; }}
+                    >
+                        <ArrowLeft size={14} /> Back
+                    </button>
+                    <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: '700' }} className="page-title">Image Details</h1>
+                    <div className="breadcrumbs" style={{ marginTop: '6px', fontSize: '0.85rem', color: '#94A3B8' }}>
                         <span style={{ color: '#6366f1', cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>Dashboard</span> / <span style={{ color: '#6366f1', cursor: 'pointer' }} onClick={() => navigate('/my-images')}>My Images</span> / <span>Image Details</span>
                     </div>
                 </div>
 
-                <main className="dashboard-content" style={{ padding: '20px 40px', display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+                <main className="dashboard-content" style={{ padding: '20px 40px 60px 40px', display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
                     
                     {/* Left Column */}
                     <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {/* Image Preview */}
-                        <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E5E5', background: '#FAFAFA', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '500px' }}>
-                            <img src={displayImage.img || displayImage.url} alt={fileName} style={{ width: '100%', maxHeight: '500px', display: 'block', objectFit: 'contain' }} />
+                        <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E5E5', background: '#FAFAFA', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '340px', padding: '15px' }}>
+                            <img src={displayImage.img || displayImage.url} alt={fileName} style={{ maxHeight: '100%', maxWidth: '100%', display: 'block', objectFit: 'contain', borderRadius: '6px' }} />
                         </div>
                         
                         {/* Quick Actions */}
                         <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #E5E5E5', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
                             <h3 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#666', fontWeight: '600' }}>Quick Actions</h3>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div 
+                                    onClick={handleDownloadImage}
+                                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#6366f1' }}>
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Download size={18} />
+                                    </div>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: '500' }}>Download</span>
+                                </div>
                                 <div 
                                     onClick={() => {
                                         const url = displayImage.url || displayImage.img;
@@ -142,26 +227,7 @@ const ImageDetails = () => {
                                     <span style={{ fontSize: '0.75rem', fontWeight: '500' }}>{isSaved ? 'Saved' : 'Add to Favorites'}</span>
                                 </div>
                                 <div 
-                                    onClick={() => {
-                                        if (window.confirm("Are you sure you want to permanently delete this image?")) {
-                                            fetch(`http://localhost:5000/api/images/${displayImage.id || displayImage._id}`, {
-                                                method: 'DELETE'
-                                            })
-                                            .then(res => res.json())
-                                            .then(data => {
-                                                if (data.success) {
-                                                    alert("Image deleted successfully!");
-                                                    navigate('/dashboard');
-                                                } else {
-                                                    alert("Failed to delete image.");
-                                                }
-                                            })
-                                            .catch(err => {
-                                                console.error("Delete error:", err);
-                                                alert("Error deleting image.");
-                                            });
-                                        }
-                                    }}
+                                    onClick={() => setShowDeleteModal(true)}
                                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#EF4444' }}>
                                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#FFF1F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <Trash2 size={18} />
@@ -244,16 +310,7 @@ const ImageDetails = () => {
                                     {copyStatus}
                                 </button>
                                 <button 
-                                    onClick={() => {
-                                        const url = displayImage.url || displayImage.img;
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = fileName;
-                                        a.target = '_blank';
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        document.body.removeChild(a);
-                                    }}
+                                    onClick={handleDownloadImage}
                                     style={{ flex: '1', padding: '12px', background: 'white', color: '#333', border: '1px solid #E5E5E5', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.95rem' }}
                                 >
                                     <Download size={16} /> Download
@@ -268,6 +325,44 @@ const ImageDetails = () => {
                     </div>
                 </main>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div style={{
+                        background: 'white', padding: '30px', borderRadius: '16px',
+                        width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                            <Trash2 size={28} color="#EF4444" />
+                        </div>
+                        <h3 style={{ margin: '0 0 10px 0', color: '#111', fontSize: '1.25rem' }}>Delete Image?</h3>
+                        <p style={{ color: '#666', marginBottom: '25px', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                            Are you sure you want to permanently delete this image? This action cannot be undone.
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                                onClick={() => setShowDeleteModal(false)}
+                                style={{ flex: 1, padding: '12px', background: '#F5F5F5', color: '#333', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmDelete}
+                                disabled={isDeleting}
+                                style={{ flex: 1, padding: '12px', background: '#EF4444', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', opacity: isDeleting ? 0.7 : 1 }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

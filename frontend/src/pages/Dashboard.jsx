@@ -27,6 +27,121 @@ const Dashboard = () => {
     const fileInputRef = useRef(null);
 
     const [bidItems, setBidItems] = useState([]);
+    const [uploadQueue, setUploadQueue] = useState([]);
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [showMoveModal, setShowMoveModal] = useState(false);
+    const [selectedAlbum, setSelectedAlbum] = useState('Nature');
+    const [customAlbumName, setCustomAlbumName] = useState('');
+    const [moveSuccessMsg, setMoveSuccessMsg] = useState('');
+
+    const handleSelectAll = () => {
+        if (selectedItems.length === bidItems.length) {
+            setSelectedItems([]);
+        } else {
+            setSelectedItems(bidItems.map(item => item.id));
+        }
+    };
+
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+    const [previewModalImage, setPreviewModalImage] = useState(null);
+    const [copySuccessToast, setCopySuccessToast] = useState(null);
+
+    const copyTextToClipboard = async (textToCopy, btnElement) => {
+        let fullUrl = textToCopy;
+        if (fullUrl && fullUrl.startsWith('/')) {
+            fullUrl = `http://localhost:5000${fullUrl}`;
+        }
+        if (!fullUrl || fullUrl.startsWith('blob:')) {
+            fullUrl = window.location.origin + '/dashboard';
+        }
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(fullUrl);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = fullUrl;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+
+            if (btnElement) {
+                btnElement.style.background = '#DCFCE7';
+                btnElement.style.borderColor = '#86EFAC';
+                btnElement.style.color = '#16A34A';
+                setTimeout(() => {
+                    btnElement.style.background = 'white';
+                    btnElement.style.borderColor = '#E5E5E5';
+                    btnElement.style.color = '#444';
+                }, 2000);
+            }
+
+            setCopySuccessToast(fullUrl);
+            setTimeout(() => setCopySuccessToast(null), 3000);
+        } catch (err) {
+            console.error("Copy failed:", err);
+            alert("Copied link: " + fullUrl);
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedItems.length === 0) {
+            alert("Pehle delete karne ke liye images select karein!");
+            return;
+        }
+        setShowDeleteConfirmModal(true);
+    };
+
+    const handleConfirmDeleteModal = async () => {
+        const idsToDelete = [...selectedItems];
+        const deletedObjects = bidItems.filter(item => idsToDelete.includes(item.id));
+        
+        // Save to trashedItems in localStorage for Trash page
+        const existingTrash = JSON.parse(localStorage.getItem('trashedItems') || '[]');
+        const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        
+        const newTrashEntries = deletedObjects.map(item => ({
+            id: item.id,
+            name: item.title || item.name || 'image.jpg',
+            date: today,
+            size: item.size || '2.4 MB',
+            img: item.img || item.url,
+            url: item.url || item.img
+        }));
+
+        localStorage.setItem('trashedItems', JSON.stringify([...newTrashEntries, ...existingTrash]));
+
+        setBidItems(prev => prev.filter(item => !idsToDelete.includes(item.id)));
+        setSelectedItems([]);
+        setShowDeleteConfirmModal(false);
+    };
+
+    const handleConfirmMove = (e) => {
+        e.preventDefault();
+        const albumName = selectedAlbum === 'NEW' ? customAlbumName : selectedAlbum;
+        if (!albumName.trim()) return;
+
+        const savedAlbumData = JSON.parse(localStorage.getItem('albumMappings') || '{}');
+        const existing = savedAlbumData[albumName] || [];
+        const selectedObjects = bidItems.filter(item => selectedItems.includes(item.id));
+        const existingIds = new Set(existing.map(item => item.id || item));
+        const newObjects = selectedObjects.filter(item => !existingIds.has(item.id));
+        
+        savedAlbumData[albumName] = [...existing, ...newObjects];
+        localStorage.setItem('albumMappings', JSON.stringify(savedAlbumData));
+
+        setMoveSuccessMsg(`✓ Successfully moved ${selectedItems.length} image(s) to album "${albumName}"!`);
+        setTimeout(() => setMoveSuccessMsg(''), 4000);
+
+        setSelectedItems([]);
+        setShowMoveModal(false);
+        setCustomAlbumName('');
+    };
 
     // Fetch images from database on load
     useEffect(() => {
@@ -79,45 +194,62 @@ const Dashboard = () => {
     };
 
     const handleFiles = async (files) => {
-        let imageFile = null;
+        if (!files || files.length === 0) return;
+
+        const newQueueItems = [];
         for (let i = 0; i < files.length; i++) {
-            if (files[i].type.startsWith('image/')) {
-                imageFile = files[i];
-                break;
+            const file = files[i];
+            if (file.type.startsWith('image/')) {
+                const previewUrl = URL.createObjectURL(file);
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+                const queueId = Date.now() + '-' + i + '-' + Math.random().toString(36).substr(2, 4);
+
+                const newItem = {
+                    id: queueId,
+                    name: file.name,
+                    size: sizeMB,
+                    progress: 100,
+                    img: previewUrl,
+                    url: null,
+                    imageId: null
+                };
+                newQueueItems.push(newItem);
+
+                if (i === 0) {
+                    setCurrentImageBlob(file);
+                    setPreviewSrc(previewUrl);
+                }
+
+                (async () => {
+                    try {
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        const response = await fetch('http://localhost:5000/api/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+                        if (data.url) {
+                            if (i === 0) setUploadedUrl(data.url);
+                            if (data.image) {
+                                setBidItems(prev => [data.image, ...prev]);
+                            }
+                            setUploadQueue(prev => prev.map(item => item.id === queueId ? { ...item, url: data.url, imageId: data.image?.id || '1' } : item));
+                        }
+                    } catch (err) {
+                        console.error("Upload error:", err);
+                    }
+                })();
             }
         }
-        
-        if (imageFile) {
-            setCurrentImageBlob(imageFile);
-            setUploadedUrl(null); // Reset URL until uploaded
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setPreviewSrc(e.target.result);
-            };
-            reader.readAsDataURL(imageFile);
-            
-            // Upload to backend to get real URL
-            try {
-                const formData = new FormData();
-                formData.append('image', imageFile);
-                const response = await fetch('http://localhost:5000/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                if (data.url) {
-                    setUploadedUrl(data.url);
-                    
-                    // Add the new image to the bottom cards from MongoDB
-                    if (data.image) {
-                        setBidItems(prev => [data.image, ...prev]);
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to upload image to backend:", err);
-            }
+
+        if (newQueueItems.length > 1) {
+            setUploadQueue(newQueueItems);
         } else {
-            alert("Koi valid image file nahi mili. Kripya image upload karein.");
+            setUploadQueue([]);
+            if (newQueueItems.length === 0) {
+                alert("Koi valid image file nahi mili. Kripya image upload karein.");
+            }
         }
     };
 
@@ -164,47 +296,16 @@ const Dashboard = () => {
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} id="sidebar">
                 <div className="sidebar-header">
                     <div className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center' }}>
-                        <img src="/logo.png" alt="Lumina Logo" style={{ height: '32px', objectFit: 'contain' }} />
-                    </div>
-                </div>
-                
-                <div style={{ padding: '0 20px', marginBottom: '15px' }}>
-                    <div className="sidebar-search" style={{ background: 'white', borderRadius: '10px', padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', border: '1px solid #E5E5E5' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', color: '#666' }}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        </span>
-                        <input type="text" placeholder="Search..." style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '0.9rem', color: '#333' }} />
+                        <div className="logo-icon" style={{ width: "32px", height: "32px" }}></div>
+                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "#6366f1" }}>Lumina</span>
                     </div>
                 </div>
                 
                 <nav className="sidebar-nav">
                     <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Home className="icon" size={20} /> Dashboard</NavLink>
-                    <NavLink to="/saved" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Heart className="icon" size={20} /> Favorites</NavLink>
                     <NavLink to="/my-images" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><ImageIcon className="icon" size={20} /> My Images</NavLink>
-                    <NavLink to="/image/1" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><ImageIcon className="icon" size={20} /> Image Details</NavLink>
-                    <NavLink to="/albums" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><BookImage className="icon" size={20} /> Albums</NavLink>
-                    <NavLink to="/shared-links" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><LinkIcon className="icon" size={20} /> Shared Links</NavLink>
                     <NavLink to="/trash" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Trash2 className="icon" size={20} /> Trash</NavLink>
-                    
-                    
-                    <NavLink to="/analytics" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><BarChart2 className="icon" size={20} /> Analytics</NavLink>
-                    <NavLink to="/image-tools" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Wand2 className="icon" size={20} /> Image Tools</NavLink>
-                    <NavLink to="/api-access" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Code className="icon" size={20} /> API Access</NavLink>
                 </nav>
-                
-                <div className="storage-card" style={{ margin: '20px', background: 'white', borderRadius: '16px', padding: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#666' }}>Storage Used</h4>
-                    <div style={{ marginBottom: '10px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111' }}>23.4 GB</span>
-                        <span style={{ fontSize: '0.85rem', color: '#999' }}> / 100 GB</span>
-                    </div>
-                    <div style={{ height: '6px', background: '#f0f0f0', borderRadius: '10px', marginBottom: '15px', overflow: 'hidden' }}>
-                        <div style={{ width: '23.4%', height: '100%', background: '#6366f1', borderRadius: '10px' }}></div>
-                    </div>
-                    <button onClick={() => navigate('/pricing')} style={{ width: '100%', padding: '10px', background: '#EEF2FF', color: '#6366f1', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <Crown size={16} /> Upgrade Plan
-                    </button>
-                </div>
             </aside>
 
             <div className="main-wrapper">
@@ -244,33 +345,219 @@ const Dashboard = () => {
                         </div>
                         
                         <div className="preview-section">
-                            <h3>Review Image</h3>
-                            <div className="preview-card">
-                                <div className="preview-img-container">
-                                    <img src={previewSrc} id="previewImg" alt="Preview" />
-                                    <div className="preview-overlay">
-                                        <div className="bid-info">
-                                            <span>Current Bid</span>
-                                            <strong>2.55 ETH</strong>
+                            {uploadQueue.length === 0 ? (
+                                <>
+                                    <h3>Review Image</h3>
+                                    <div className="preview-card">
+                                        <div className="preview-img-container">
+                                            <img src={previewSrc} id="previewImg" alt="Preview" />
                                         </div>
-                                        <div className="auction-info">
-                                            <span>Auction Time</span>
-                                            <strong>20h 45m 15s</strong>
+                                        <div className="preview-details">
+                                            <div className="preview-actions">
+                                                <button className="btn-outline" id="btnCopyImage" onClick={handleCopyImage}>{copyStatus}</button>
+                                                <button className="btn-purple" onClick={handleCopyLink}>{copyLinkStatus}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '20px',
+                                    padding: '28px',
+                                    border: '1px solid #E5E5E5',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '24px'
+                                }}>
+                                    {/* Header Row */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                            <div style={{
+                                                width: '48px', height: '48px', borderRadius: '50%',
+                                                background: '#EEF2FF', display: 'flex', alignItems: 'center',
+                                                justifyContent: 'center', color: '#6366f1', flexShrink: 0
+                                            }}>
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>
+                                                    <polyline points="16 16 12 12 8 16"/>
+                                                    <line x1="12" y1="12" x2="12" y2="21"/>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#1A1A1A', fontWeight: '700' }}>Uploading Files</h3>
+                                                    <span style={{
+                                                        background: '#EEF2FF', color: '#6366f1', borderRadius: '20px',
+                                                        padding: '2px 10px', fontSize: '0.85rem', fontWeight: '700'
+                                                    }}>
+                                                        {uploadQueue.length}
+                                                    </span>
+                                                </div>
+                                                <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: '#888' }}>
+                                                    Please wait while your files are being uploaded...
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => setUploadQueue([])}
+                                            style={{
+                                                background: 'none', border: 'none', color: '#999',
+                                                fontSize: '1.2rem', cursor: 'pointer', padding: '4px',
+                                                transition: 'color 0.2s'
+                                            }}
+                                            onMouseOver={e => e.currentTarget.style.color='#333'}
+                                            onMouseOut={e => e.currentTarget.style.color='#999'}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    {/* Item Cards List */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {uploadQueue.map((item) => {
+                                            const ext = item.name.split('.').pop().toUpperCase();
+                                            return (
+                                                <div key={item.id} style={{
+                                                    background: 'white', borderRadius: '16px', padding: '18px 20px',
+                                                    border: '1px solid #EAEAEA', display: 'flex', alignItems: 'center',
+                                                    gap: '18px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                                                }}>
+                                                    {/* Thumbnail */}
+                                                    <img 
+                                                        src={item.img} 
+                                                        alt={item.name} 
+                                                        style={{ width: '64px', height: '64px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }} 
+                                                    />
+
+                                                    {/* Info & Progress */}
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <div>
+                                                                <div style={{
+                                                                    fontSize: '0.78rem', fontWeight: '600', color: '#1A1A1A',
+                                                                    maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                                    whiteSpace: 'nowrap'
+                                                                }} title={item.name}>
+                                                                    {item.name}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.72rem', color: '#999', marginTop: '2px' }}>{item.size} • {ext}</div>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <span style={{ fontSize: '0.95rem', fontWeight: '700', color: '#16A34A' }}>{item.progress}%</span>
+                                                                <div style={{
+                                                                    width: '24px', height: '24px', borderRadius: '50%',
+                                                                    background: '#DCFCE7', color: '#16A34A', display: 'flex',
+                                                                    alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold'
+                                                                }}>
+                                                                    ✓
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Progress Bar */}
+                                                        <div style={{ width: '100%', height: '4px', background: '#EEF2FF', borderRadius: '4px', overflow: 'hidden' }}>
+                                                            <div style={{ width: `${item.progress}%`, height: '100%', background: '#6366f1', borderRadius: '4px', transition: 'width 0.3s' }}></div>
+                                                        </div>
+
+                                                        {/* Status Tag & Right Action Icons */}
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                                                            <span style={{
+                                                                background: '#DCFCE7', color: '#16A34A', padding: '4px 14px',
+                                                                borderRadius: '20px', fontSize: '0.78rem', fontWeight: '600'
+                                                            }}>
+                                                                Completed
+                                                            </span>
+                                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                                <button
+                                                                    onClick={() => setPreviewModalImage({
+                                                                        id: item.imageId || item.id || '1',
+                                                                        title: item.name || 'Uploaded Image',
+                                                                        img: item.img || item.url,
+                                                                        url: item.url || item.img
+                                                                    })}
+                                                                    style={{
+                                                                        width: '36px', height: '36px', borderRadius: '10px',
+                                                                        border: '1px solid #E5E5E5', background: 'white',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        cursor: 'pointer', color: '#444', transition: 'all 0.2s'
+                                                                    }}
+                                                                    title="View Image"
+                                                                    onMouseOver={e => e.currentTarget.style.background='#F5F5F5'}
+                                                                    onMouseOut={e => e.currentTarget.style.background='white'}
+                                                                >
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                                        <circle cx="12" cy="12" r="3"></circle>
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => copyTextToClipboard(item.url || item.img, e.currentTarget)}
+                                                                    style={{
+                                                                        width: '36px', height: '36px', borderRadius: '10px',
+                                                                        border: '1px solid #E5E5E5', background: 'white',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        cursor: 'pointer', color: '#444', transition: 'all 0.2s'
+                                                                    }}
+                                                                    title="Copy Link"
+                                                                    onMouseOver={e => { if (e.currentTarget.style.background !== 'rgb(220, 252, 231)') e.currentTarget.style.background='#F5F5F5'; }}
+                                                                    onMouseOut={e => { if (e.currentTarget.style.background !== 'rgb(220, 252, 231)') e.currentTarget.style.background='white'; }}
+                                                                >
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Footer Row */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #F0F0F0', gap: '15px' }}>
+                                        <span style={{ fontSize: '0.9rem', color: '#888', fontWeight: '500', whiteSpace: 'nowrap' }}>
+                                            {uploadQueue.length} of {uploadQueue.length} files uploaded
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+                                            <button
+                                                onClick={() => setUploadQueue([])}
+                                                style={{
+                                                    background: 'none', border: 'none', color: '#666',
+                                                    fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                Clear all
+                                            </button>
+                                            <button
+                                                onClick={() => fileInputRef.current.click()}
+                                                style={{
+                                                    padding: '10px 22px', background: '#6366f1', color: 'white',
+                                                    border: 'none', borderRadius: '12px', fontWeight: '600',
+                                                    fontSize: '0.9rem', cursor: 'pointer', display: 'inline-flex',
+                                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                                    whiteSpace: 'nowrap', flexShrink: 0,
+                                                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseOver={e => e.currentTarget.style.background='#4f46e5'}
+                                                onMouseOut={e => e.currentTarget.style.background='#6366f1'}
+                                            >
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                                    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>
+                                                    <polyline points="16 16 12 12 8 16"/>
+                                                    <line x1="12" y1="12" x2="12" y2="21"/>
+                                                </svg>
+                                                <span style={{ whiteSpace: 'nowrap' }}>Upload more</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="preview-details">
-                                    <h4>Abstract 3D Design</h4>
-                                    <div className="creator">
-                                        <img src="https://ui-avatars.com/api/?name=Nella+Vita" alt="Creator" />
-                                        <span>Nella Vita</span>
-                                    </div>
-                                    <div className="preview-actions">
-                                        <button className="btn-outline" id="btnCopyImage" onClick={handleCopyImage}>{copyStatus}</button>
-                                        <button className="btn-purple" onClick={handleCopyLink}>{copyLinkStatus}</button>
-                                    </div>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                     <div style={{ marginTop: '40px', marginBottom: '20px' }}>
@@ -298,6 +585,50 @@ const Dashboard = () => {
                                     <option>Size: L to S</option>
                                     <option>Size: S to L</option>
                                 </select>
+
+                                <select
+                                    value=""
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === 'select-all') {
+                                            setSelectedItems(bidItems.map(item => item.id));
+                                        } else if (val === 'deselect-all') {
+                                            setSelectedItems([]);
+                                        } else if (val === 'move-album') {
+                                            if (selectedItems.length === 0) {
+                                                alert("Pehle album mein move karne ke liye images select karein!");
+                                            } else {
+                                                setShowMoveModal(true);
+                                            }
+                                        } else if (val === 'delete-selected') {
+                                            handleBulkDelete();
+                                        }
+                                    }}
+                                    style={{ 
+                                        padding: '8px 15px', 
+                                        borderRadius: '8px', 
+                                        border: '1px solid #E5E5E5', 
+                                        outline: 'none', 
+                                        background: selectedItems.length > 0 ? '#EEF2FF' : 'white', 
+                                        color: selectedItems.length > 0 ? '#6366f1' : '#333', 
+                                        fontWeight: '600', 
+                                        fontSize: '0.85rem', 
+                                        cursor: 'pointer', 
+                                        height: '38px' 
+                                    }}
+                                >
+                                    <option value="" disabled hidden>
+                                        {selectedItems.length > 0 ? `Selected (${selectedItems.length}) ▾` : 'Select ▾'}
+                                    </option>
+                                    <option value="select-all">✓ Select All</option>
+                                    <option value="deselect-all">✕ Deselect All</option>
+                                    <option value="move-album" disabled={selectedItems.length === 0}>
+                                        📁 Move to Album {selectedItems.length > 0 ? `(${selectedItems.length})` : ''}
+                                    </option>
+                                    {selectedItems.length > 0 && (
+                                        <option value="delete-selected">🗑 Delete Selected ({selectedItems.length})</option>
+                                    )}
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -315,7 +646,28 @@ const Dashboard = () => {
                                 <div className="bid-img" onClick={() => navigate(`/image/${item.id}`)} style={{ height: '180px', position: 'relative', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
                                     <img src={item.img} alt="Uploaded Item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     
-                                    <div style={{ position: 'absolute', top: '10px', right: '10px', width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.7)', borderRadius: '4px', cursor: 'pointer' }}></div>
+                                    <div 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (selectedItems.includes(item.id)) {
+                                                setSelectedItems(selectedItems.filter(id => id !== item.id));
+                                            } else {
+                                                setSelectedItems([...selectedItems, item.id]);
+                                            }
+                                        }}
+                                        style={{ 
+                                            position: 'absolute', top: '10px', right: '10px', 
+                                            width: '22px', height: '22px', 
+                                            border: selectedItems.includes(item.id) ? 'none' : '2px solid rgba(255,255,255,0.9)', 
+                                            borderRadius: '5px', cursor: 'pointer',
+                                            background: selectedItems.includes(item.id) ? '#6366f1' : 'rgba(0,0,0,0.3)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            color: 'white', fontWeight: 'bold', fontSize: '0.75rem',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                                            zIndex: 5
+                                        }}>
+                                        {selectedItems.includes(item.id) && '✓'}
+                                    </div>
                                     
                                     <button 
                                         onClick={(e) => {
@@ -341,13 +693,410 @@ const Dashboard = () => {
                                     </button>
                                 </div>
                                 
-                                <div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1A1A1A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
-                                    <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '2px' }}>{fileSize}</div>
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                    <button 
+                                        onClick={() => setPreviewModalImage({
+                                            id: item.id,
+                                            title: item.title || item.name || 'Uploaded Image',
+                                            img: item.img || item.url,
+                                            url: item.url || item.img
+                                        })}
+                                        style={{
+                                            flex: 1, padding: '8px 12px', background: '#6366f1', color: 'white',
+                                            border: 'none', borderRadius: '8px', fontWeight: '600',
+                                            fontSize: '0.8rem', cursor: 'pointer', transition: 'background 0.2s'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.background='#4f46e5'}
+                                        onMouseOut={e => e.currentTarget.style.background='#6366f1'}
+                                    >
+                                        View Image
+                                    </button>
+                                    <button 
+                                        onClick={(e) => {
+                                            const copyText = item.url || item.img;
+                                            const btn = e.currentTarget;
+                                            const copy = (text) => {
+                                                if (navigator.clipboard && window.isSecureContext) {
+                                                    return navigator.clipboard.writeText(text);
+                                                } else {
+                                                    const ta = document.createElement('textarea');
+                                                    ta.value = text;
+                                                    ta.style.position = 'fixed';
+                                                    ta.style.opacity = '0';
+                                                    document.body.appendChild(ta);
+                                                    ta.focus(); ta.select();
+                                                    document.execCommand('copy');
+                                                    document.body.removeChild(ta);
+                                                    return Promise.resolve();
+                                                }
+                                            };
+                                            copy(copyText).then(() => {
+                                                btn.textContent = '✓ Copied!';
+                                                btn.style.background = '#dcfce7';
+                                                btn.style.color = '#16a34a';
+                                                btn.style.border = '1px solid #86efac';
+                                                setTimeout(() => {
+                                                    btn.textContent = 'Copy Link';
+                                                    btn.style.background = 'white';
+                                                    btn.style.color = '#333';
+                                                    btn.style.border = '1px solid #E5E5E5';
+                                                }, 2000);
+                                            });
+                                        }}
+                                        style={{
+                                            flex: 1, padding: '8px 12px', background: 'white', color: '#333',
+                                            border: '1px solid #E5E5E5', borderRadius: '8px', fontWeight: '600',
+                                            fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
+                                        }}
+                                        onMouseOver={e => { if (e.currentTarget.textContent !== '✓ Copied!') e.currentTarget.style.background='#F5F5F5'; }}
+                                        onMouseOut={e => { if (e.currentTarget.textContent !== '✓ Copied!') e.currentTarget.style.background='white'; }}
+                                    >
+                                        Copy Link
+                                    </button>
                                 </div>
                             </div>
                         )})}
                     </div>    
+                    {/* Move to Album Modal */}
+                    {showMoveModal && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: '20px'
+                        }}>
+                            <div style={{
+                                background: 'white', borderRadius: '16px', padding: '30px',
+                                width: '100%', maxWidth: '440px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+                            }}>
+                                <h3 style={{ margin: '0 0 10px 0', fontSize: '1.3rem', color: '#1A1A1A', fontWeight: '700' }}>
+                                    📁 Move to Album
+                                </h3>
+                                <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '20px' }}>
+                                    Moving <strong>{selectedItems.length}</strong> selected image(s) to folder/album.
+                                </p>
+
+                                <form onSubmit={handleConfirmMove} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#666', marginBottom: '6px' }}>Select Target Album</label>
+                                        <select 
+                                            value={selectedAlbum} 
+                                            onChange={(e) => setSelectedAlbum(e.target.value)}
+                                            style={{
+                                                width: '100%', padding: '10px 14px', borderRadius: '8px',
+                                                border: '1px solid #E5E5E5', outline: 'none', fontSize: '0.95rem',
+                                                background: 'white', color: '#333', cursor: 'pointer'
+                                            }}
+                                        >
+                                            <option value="Nature">🌿 Nature</option>
+                                            <option value="Architecture">🏛 Architecture</option>
+                                            <option value="Products">📦 Products</option>
+                                            <option value="Portraits">👤 Portraits</option>
+                                            <option value="Interiors">🛋 Interiors</option>
+                                            <option value="Cars">🚗 Cars</option>
+                                            <option value="Minimal">🎨 Minimal</option>
+                                            <option value="NEW">+ Create New Album...</option>
+                                        </select>
+                                    </div>
+
+                                    {selectedAlbum === 'NEW' && (
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#666', marginBottom: '6px' }}>New Album Name</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="e.g. Summer Vacation 2024"
+                                                value={customAlbumName}
+                                                onChange={(e) => setCustomAlbumName(e.target.value)}
+                                                required
+                                                style={{
+                                                    width: '100%', padding: '10px 14px', borderRadius: '8px',
+                                                    border: '1px solid #E5E5E5', outline: 'none', fontSize: '0.95rem'
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowMoveModal(false)}
+                                            style={{
+                                                padding: '10px 20px', borderRadius: '8px', border: '1px solid #E5E5E5',
+                                                background: 'white', color: '#333', fontWeight: '600', cursor: 'pointer'
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            type="submit"
+                                            style={{
+                                                padding: '10px 22px', borderRadius: '8px', border: 'none',
+                                                background: '#6366f1', color: 'white', fontWeight: '600', cursor: 'pointer'
+                                            }}
+                                        >
+                                            Move Images
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                    {/* Delete Confirmation Modal */}
+                    {showDeleteConfirmModal && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(0, 0, 0, 0.45)', backdropFilter: 'blur(5px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 9999, padding: '20px'
+                        }}>
+                            <div style={{
+                                background: 'white', borderRadius: '24px', padding: '36px',
+                                width: '100%', maxWidth: '480px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                position: 'relative', display: 'flex', flexDirection: 'column', gap: '22px'
+                            }}>
+                                {/* Close Button */}
+                                <button 
+                                    onClick={() => setShowDeleteConfirmModal(false)}
+                                    style={{
+                                        position: 'absolute', top: '24px', right: '24px',
+                                        background: 'none', border: 'none', color: '#94A3B8',
+                                        fontSize: '1.2rem', cursor: 'pointer', padding: '4px',
+                                        transition: 'color 0.2s'
+                                    }}
+                                    onMouseOver={e => e.currentTarget.style.color='#0F172A'}
+                                    onMouseOut={e => e.currentTarget.style.color='#94A3B8'}
+                                >
+                                    ✕
+                                </button>
+
+                                {/* Warning Icon Badge */}
+                                <div style={{
+                                    width: '54px', height: '54px', borderRadius: '50%',
+                                    background: '#FEE2E2', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', color: '#EF4444'
+                                }}>
+                                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                        <line x1="12" y1="9" x2="12" y2="13"/>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                    </svg>
+                                </div>
+
+                                {/* Title & Body */}
+                                <div>
+                                    <h2 style={{ margin: '0 0 8px 0', fontSize: '1.5rem', fontWeight: '700', color: '#0F172A' }}>
+                                        Delete Image(s)?
+                                    </h2>
+                                    <p style={{ margin: 0, fontSize: '0.95rem', color: '#475569', lineHeight: '1.5' }}>
+                                        You have selected <span style={{ color: '#EF4444', fontWeight: '600' }}>{selectedItems.length} image{selectedItems.length > 1 ? 's' : ''}</span>. Are you sure you want to delete {selectedItems.length > 1 ? 'them' : 'it'}? This action cannot be undone.
+                                    </p>
+                                </div>
+
+                                {/* Selected Info Summary Box */}
+                                <div style={{
+                                    background: '#F8FAFC', borderRadius: '16px', padding: '16px 20px',
+                                    display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #F1F5F9'
+                                }}>
+                                    <div style={{
+                                        width: '44px', height: '44px', borderRadius: '14px',
+                                        background: '#EEF2FF', color: '#6366f1', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                    }}>
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                                            <polyline points="21 15 16 10 5 21"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#1E293B' }}>Selected</div>
+                                        <div style={{ fontSize: '0.88rem', color: '#64748B', marginTop: '2px' }}>
+                                            {selectedItems.length} image{selectedItems.length > 1 ? 's' : ''} • 2.4 MB
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Divider */}
+                                <div style={{ height: '1px', background: '#F1F5F9', margin: '2px 0' }}></div>
+
+                                {/* Actions Footer */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                                    <button
+                                        onClick={() => setShowDeleteConfirmModal(false)}
+                                        style={{
+                                            padding: '12px 28px', background: 'white', color: '#1E293B',
+                                            border: '1px solid #E2E8F0', borderRadius: '12px', fontWeight: '600',
+                                            fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.background='#F8FAFC'}
+                                        onMouseOut={e => e.currentTarget.style.background='white'}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmDeleteModal}
+                                        style={{
+                                            padding: '12px 24px', background: '#DC2626', color: 'white',
+                                            border: 'none', borderRadius: '12px', fontWeight: '600',
+                                            fontSize: '0.95rem', cursor: 'pointer', display: 'flex',
+                                            alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.background='#B91C1C'}
+                                        onMouseOut={e => e.currentTarget.style.background='#DC2626'}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                        Delete Image(s)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* Image Preview Lightbox Popup Modal */}
+                    {previewModalImage && (
+                        <div 
+                            onClick={() => setPreviewModalImage(null)}
+                            style={{
+                                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                                backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                zIndex: 10000, padding: '20px'
+                            }}
+                        >
+                            <div 
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    background: 'white', borderRadius: '24px', width: '100%', maxWidth: '720px',
+                                    overflow: 'hidden', boxShadow: '0 30px 60px rgba(0, 0, 0, 0.35)',
+                                    display: 'flex', flexDirection: 'column', position: 'relative'
+                                }}
+                            >
+                                {/* Header */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #F1F5F9' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                                        {previewModalImage.title}
+                                    </h3>
+                                    <button 
+                                        onClick={() => setPreviewModalImage(null)}
+                                        style={{
+                                            width: '34px', height: '34px', borderRadius: '50%', background: '#F1F5F9',
+                                            border: 'none', color: '#64748B', fontSize: '1.1rem', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.background='#E2E8F0'}
+                                        onMouseOut={e => e.currentTarget.style.background='#F1F5F9'}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* Image Stage */}
+                                <div style={{ background: '#0F172A', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '340px', maxHeight: '520px' }}>
+                                    <img 
+                                        src={previewModalImage.img || previewModalImage.url} 
+                                        alt={previewModalImage.title} 
+                                        style={{ maxHeight: '480px', maxWidth: '100%', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+                                    />
+                                </div>
+
+                                {/* Footer Controls */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: 'white' }}>
+                                    <button 
+                                        onClick={() => {
+                                            setPreviewModalImage(null);
+                                            navigate(`/image/${previewModalImage.id || 1}`);
+                                        }}
+                                        style={{
+                                            padding: '10px 18px', background: '#EEF2FF', color: '#6366f1',
+                                            border: 'none', borderRadius: '10px', fontWeight: '600',
+                                            fontSize: '0.88rem', cursor: 'pointer'
+                                        }}
+                                    >
+                                        View Details Page →
+                                    </button>
+
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        <button
+                                            onClick={(e) => {
+                                                const btn = e.currentTarget;
+                                                const targetUrl = previewModalImage.url || previewModalImage.img;
+                                                navigator.clipboard.writeText(targetUrl);
+                                                btn.textContent = '✓ Copied!';
+                                                btn.style.background = '#DCFCE7';
+                                                btn.style.color = '#16A34A';
+                                                setTimeout(() => {
+                                                    btn.textContent = 'Copy Link';
+                                                    btn.style.background = 'white';
+                                                    btn.style.color = '#334155';
+                                                }, 2000);
+                                            }}
+                                            style={{
+                                                padding: '10px 20px', background: 'white', color: '#334155',
+                                                border: '1px solid #E2E8F0', borderRadius: '10px', fontWeight: '600',
+                                                fontSize: '0.88rem', cursor: 'pointer', transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            Copy Link
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                const imageUrl = previewModalImage.img || previewModalImage.url;
+                                                if (!imageUrl) return;
+                                                try {
+                                                    const response = await fetch(imageUrl);
+                                                    const blob = await response.blob();
+                                                    const blobUrl = URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.href = blobUrl;
+                                                    a.download = previewModalImage.title || 'image.jpg';
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    document.body.removeChild(a);
+                                                    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                                                } catch (err) {
+                                                    window.open(imageUrl, '_blank');
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '10px 22px', background: '#6366f1', color: 'white',
+                                                border: 'none', borderRadius: '10px', fontWeight: '600',
+                                                fontSize: '0.88rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                                            }}
+                                        >
+                                            Download
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* Floating Toast Notification for Link Copy */}
+                    {copySuccessToast && (
+                        <div style={{
+                            position: 'fixed', bottom: '30px', right: '30px',
+                            background: '#0F172A', color: 'white', padding: '14px 22px',
+                            borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                            display: 'flex', alignItems: 'center', gap: '12px', zIndex: 99999,
+                            fontSize: '0.9rem', fontWeight: '600', animation: 'fadeIn 0.3s'
+                        }}>
+                            <div style={{
+                                width: '24px', height: '24px', borderRadius: '50%',
+                                background: '#22C55E', color: 'white', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold'
+                            }}>
+                                ✓
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: '700', color: 'white' }}>Link Copied to Clipboard!</div>
+                                <div style={{ fontSize: '0.78rem', color: '#94A3B8', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                                    {copySuccessToast}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>
