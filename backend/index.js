@@ -12,14 +12,16 @@ app.use(express.json());
 
 // MongoDB connection
 const MONGO_URI = process.env.MONGO_URI;
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('Connected to MongoDB successfully!'))
-    .catch(err => {
-        console.error('MongoDB connection error:');
-        console.error('Error Code:', err.code);
-        console.error('Hostname:', err.hostname);
-        console.error('Message:', err.message);
-    });
+if (MONGO_URI) {
+    (async () => {
+        try {
+            await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 3000 });
+            console.log('Connected to MongoDB successfully!');
+        } catch (err) {
+            console.error('MongoDB connection error (running in offline/fallback mode):', err.message);
+        }
+    })();
+}
 
 // Define Schema and Model
 const imageSchema = new mongoose.Schema({
@@ -189,3 +191,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// Keepalive interval for Node process
+setInterval(() => {}, 1000 * 60 * 60);

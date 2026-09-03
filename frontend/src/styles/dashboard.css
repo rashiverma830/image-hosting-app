@@ -28,10 +28,9 @@ body.dashboard-body #root {
 
 /* Sidebar */
 .sidebar {
-    width: 250px;
-    background-image: url('/image/full-screen-size.png');
-    background-size: cover;
-    background-position: center;
+    width: 260px;
+    background: #FFFFFF;
+    border-right: 1px solid #EAEAEA;
     position: fixed;
     height: 100vh;
     left: 0;
@@ -41,21 +40,17 @@ body.dashboard-body #root {
     flex-direction: column;
 }
 
-/* Semi-transparent white overlay over the sidebar background image */
+/* Semi-transparent white overlay removed */
 .sidebar::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255, 255, 255, 0.85); /* Frosty white overlay */
-    backdrop-filter: blur(10px);
-    z-index: -1;
+    display: none !important;
 }
 
 .sidebar-header {
-    padding: 30px 20px;
+    padding: 24px 20px 20px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    border-bottom: none;
 }
 
 .logo {
@@ -165,9 +160,10 @@ body.dashboard-body #root {
 /* Main Content */
 .main-wrapper {
     flex: 1;
-    margin-left: 250px;
+    margin-left: 260px;
     display: flex;
     flex-direction: column;
+    background: #FAFAFA;
 }
 
 /* Header */
@@ -728,16 +724,21 @@ body.dark-mode {
 }
 
 body.dark-mode .sidebar {
-    background-color: #1e1e1e !important;
+    background-color: #18181B !important;
     background-image: none !important;
+    border-right: 1px solid #27272A !important;
+}
+
+body.dark-mode .sidebar-header {
+    border-bottom: none !important;
 }
 
 body.dark-mode .sidebar::before {
-    background: rgba(30, 30, 30, 0.85);
+    display: none !important;
 }
 
 body.dark-mode .main-wrapper {
-    background-color: #121212;
+    background-color: #09090B !important;
 }
 
 body.dark-mode .top-header h1 {
@@ -797,3 +798,130 @@ body.dark-mode .btn-outline {
     border-color: #333;
     color: #e0e0e0;
 }
+
+/* Custom Scrollbar for Upload Queue List */
+.upload-queue-scroll-container {
+    max-height: 480px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 transparent;
+}
+
+.upload-queue-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.upload-queue-scroll-container::-webkit-scrollbar-track {
+    background: #F8FAFC;
+    border-radius: 8px;
+}
+
+.upload-queue-scroll-container::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 8px;
+}
+
+.upload-queue-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+
+/* Image Card Hover & Eye Button */
+.card-img-container {
+    position: relative;
+    height: 180px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #0f172a;
+}
+
+.card-img-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+
+.card-img-container:hover img {
+    transform: scale(1.06);
+}
+
+.card-hover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    z-index: 4;
+}
+
+.card-img-container:hover .card-hover-overlay {
+    opacity: 1;
+}
+
+.card-hover-eye-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4F46E5;
+    cursor: pointer;
+    transform: scale(0.85);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, color 0.2s;
+}
+
+.card-img-container:hover .card-hover-eye-btn {
+    transform: scale(1);
+}
+
+.card-hover-eye-btn:hover {
+    background: #4F46E5;
+    color: #FFFFFF !important;
+    transform: scale(1.12) !important;
+}
+
+.card-hover-copy-btn {
+    margin-top: 10px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    border: none;
+    color: #1E293B;
+    font-weight: 700;
+    font-size: 0.76rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transform: scale(0.9);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card-img-container:hover .card-hover-copy-btn {
+    transform: scale(1);
+}
+
+.card-hover-copy-btn:hover {
+    background: #4F46E5;
+    color: #FFFFFF !important;
+    transform: scale(1.06) !important;
+}
+

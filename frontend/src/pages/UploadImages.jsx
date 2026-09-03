@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
+import Logo from '../components/Logo';
 import { 
   Home, 
   Image as ImageIcon, 
@@ -58,21 +59,16 @@ const UploadImages = () => {
         <div className="dashboard-layout">
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} id="sidebar">
                 <div className="sidebar-header">
-                    <div className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center' }}>
-                        <div className="logo-icon" style={{ width: "32px", height: "32px" }}></div><span style={{ fontSize: "1.4rem", fontWeight: "800", color: "#6366f1" }}>Lumina</span>
-                    </div>
+                    <Link to="/dashboard" className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center', textDecoration: 'none', width: '100%' }}>
+                        <Logo height={38} />
+                    </Link>
                 </div>
                 
                 <nav className="sidebar-nav">
                     <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Home className="icon" size={20} /> Dashboard</NavLink>
-
                     <NavLink to="/my-images" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><ImageIcon className="icon" size={20} /> My Images</NavLink>
                     <NavLink to="/trash" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Trash2 className="icon" size={20} /> Trash</NavLink>
-
-
                 </nav>
-                
-                
             </aside>
             <div className="main-wrapper">
                 <Header title="Upload Images" breadcrumbs="Upload" onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />

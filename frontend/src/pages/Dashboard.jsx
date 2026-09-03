@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, NavLink } from 'react-router-dom';
 import Header from '../components/Header';
+import Logo from '../components/Logo';
 import { 
   Home, 
   Image as ImageIcon, 
@@ -11,7 +12,11 @@ import {
   BarChart2, 
   Wand2, 
   Code,
-  Crown
+  Crown,
+  Save,
+  Upload,
+  Check,
+  Eye
 } from 'lucide-react';
 import '../styles/dashboard.css';
 
@@ -45,6 +50,56 @@ const Dashboard = () => {
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
     const [previewModalImage, setPreviewModalImage] = useState(null);
     const [copySuccessToast, setCopySuccessToast] = useState(null);
+    const [saveStatus, setSaveStatus] = useState('Save');
+    const [toastMessage, setToastMessage] = useState(null);
+
+    const handleSave = () => {
+        const savedList = JSON.parse(localStorage.getItem('savedItems') || '[]');
+        let itemsToSave = [];
+
+        if (uploadQueue.length > 0) {
+            itemsToSave = uploadQueue.map(item => ({
+                id: item.imageId || item.id,
+                title: item.name ? item.name.replace(/\.[^/.]+$/, "") : 'Uploaded Image',
+                name: item.name || 'Uploaded Image',
+                img: item.url || item.img,
+                url: item.url || item.img,
+                bid: '0.00 ETH',
+                time: '24h 00m'
+            }));
+        } else if (uploadedUrl || previewSrc) {
+            itemsToSave = [{
+                id: Date.now().toString(),
+                title: currentImageBlob ? currentImageBlob.name.replace(/\.[^/.]+$/, "") : 'Reviewed Image',
+                name: currentImageBlob ? currentImageBlob.name : 'Reviewed Image',
+                img: uploadedUrl || previewSrc,
+                url: uploadedUrl || previewSrc,
+                bid: '0.00 ETH',
+                time: '24h 00m'
+            }];
+        }
+
+        if (itemsToSave.length > 0) {
+            const existingIds = new Set(savedList.map(s => s.id));
+            const newItems = itemsToSave.filter(item => !existingIds.has(item.id));
+            const updatedSaved = [...newItems, ...savedList];
+            localStorage.setItem('savedItems', JSON.stringify(updatedSaved));
+
+            // Also ensure in bidItems (Your Library)
+            setBidItems(prev => {
+                const currentIds = new Set(prev.map(p => p.id));
+                const toAdd = itemsToSave.filter(item => !currentIds.has(item.id));
+                return [...toAdd, ...prev];
+            });
+        }
+
+        setSaveStatus('Saved ✓');
+        setToastMessage({ title: 'Saved to Library!', detail: `${itemsToSave.length} image(s) saved successfully.` });
+        setTimeout(() => {
+            setSaveStatus('Save');
+            setToastMessage(null);
+        }, 2500);
+    };
 
     const copyTextToClipboard = async (textToCopy, btnElement) => {
         let fullUrl = textToCopy;
@@ -164,6 +219,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         document.body.classList.add('dashboard-body');
+        document.body.classList.remove('dark-mode');
         return () => {
             document.body.classList.remove('dashboard-body');
         };
@@ -243,13 +299,10 @@ const Dashboard = () => {
             }
         }
 
-        if (newQueueItems.length > 1) {
-            setUploadQueue(newQueueItems);
+        if (newQueueItems.length > 0) {
+            setUploadQueue(prev => [...newQueueItems, ...prev]);
         } else {
-            setUploadQueue([]);
-            if (newQueueItems.length === 0) {
-                alert("Koi valid image file nahi mili. Kripya image upload karein.");
-            }
+            alert("Koi valid image file nahi mili. Kripya image upload karein.");
         }
     };
 
@@ -295,10 +348,9 @@ const Dashboard = () => {
         <div className="dashboard-layout">
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} id="sidebar">
                 <div className="sidebar-header">
-                    <div className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center' }}>
-                        <div className="logo-icon" style={{ width: "32px", height: "32px" }}></div>
-                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "#6366f1" }}>Lumina</span>
-                    </div>
+                    <Link to="/dashboard" className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center', textDecoration: 'none', width: '100%' }}>
+                        <Logo height={38} />
+                    </Link>
                 </div>
                 
                 <nav className="sidebar-nav">
@@ -311,13 +363,15 @@ const Dashboard = () => {
             <div className="main-wrapper">
                 <Header title="Dashboard" breadcrumbs="Dashboard" onToggleSidebar={toggleSidebar} />
                 <main className="dashboard-content">
-                    <div className="top-section">
-                        <div className="upload-section">
+                    <div className="top-section" style={{ alignItems: 'stretch' }}>
+                        <div className="upload-section" style={{ display: 'flex', flexDirection: 'column' }}>
                             <h3>Upload File</h3>
                             <div 
                                 className="upload-box" 
                                 id="dropZone" 
                                 style={{ 
+                                    flex: 1,
+                                    minHeight: '400px',
                                     transition: 'border-color 0.3s', 
                                     cursor: 'pointer',
                                     borderColor: isDragOver ? '#2F54EB' : '#D9D9D9',
@@ -414,58 +468,52 @@ const Dashboard = () => {
                                         </button>
                                     </div>
 
-                                    {/* Item Cards List */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    {/* Item Cards List with Scrollbar */}
+                                    <div className="upload-queue-scroll-container">
                                         {uploadQueue.map((item) => {
                                             const ext = item.name.split('.').pop().toUpperCase();
                                             return (
                                                 <div key={item.id} style={{
-                                                    background: 'white', borderRadius: '16px', padding: '18px 20px',
+                                                    background: 'white', borderRadius: '16px', padding: '16px 18px',
                                                     border: '1px solid #EAEAEA', display: 'flex', alignItems: 'center',
-                                                    gap: '18px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                                                    gap: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
                                                 }}>
                                                     {/* Thumbnail */}
                                                     <img 
                                                         src={item.img} 
                                                         alt={item.name} 
-                                                        style={{ width: '64px', height: '64px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }} 
+                                                        style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }} 
                                                     />
 
                                                     {/* Info & Progress */}
-                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                            <div>
+                                                            <div style={{ overflow: 'hidden' }}>
                                                                 <div style={{
-                                                                    fontSize: '0.78rem', fontWeight: '600', color: '#1A1A1A',
-                                                                    maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                                    fontSize: '0.88rem', fontWeight: '700', color: '#1E293B',
+                                                                    maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis',
                                                                     whiteSpace: 'nowrap'
                                                                 }} title={item.name}>
                                                                     {item.name}
                                                                 </div>
-                                                                <div style={{ fontSize: '0.72rem', color: '#999', marginTop: '2px' }}>{item.size} • {ext}</div>
+                                                                <div style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '2px' }}>{item.size} • {ext}</div>
                                                             </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                <span style={{ fontSize: '0.95rem', fontWeight: '700', color: '#16A34A' }}>{item.progress}%</span>
-                                                                <div style={{
-                                                                    width: '24px', height: '24px', borderRadius: '50%',
-                                                                    background: '#DCFCE7', color: '#16A34A', display: 'flex',
-                                                                    alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold'
-                                                                }}>
-                                                                    ✓
-                                                                </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                                                <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#16A34A' }}>{item.progress}%</span>
+                                                                <span style={{ color: '#16A34A', fontSize: '0.9rem', fontWeight: 'bold' }}>✓</span>
                                                             </div>
                                                         </div>
 
                                                         {/* Progress Bar */}
-                                                        <div style={{ width: '100%', height: '4px', background: '#EEF2FF', borderRadius: '4px', overflow: 'hidden' }}>
-                                                            <div style={{ width: `${item.progress}%`, height: '100%', background: '#6366f1', borderRadius: '4px', transition: 'width 0.3s' }}></div>
+                                                        <div style={{ width: '100%', height: '3px', background: '#EEF2FF', borderRadius: '3px', overflow: 'hidden' }}>
+                                                            <div style={{ width: `${item.progress}%`, height: '100%', background: '#6366f1', borderRadius: '3px', transition: 'width 0.3s' }}></div>
                                                         </div>
 
                                                         {/* Status Tag & Right Action Icons */}
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
                                                             <span style={{
-                                                                background: '#DCFCE7', color: '#16A34A', padding: '4px 14px',
-                                                                borderRadius: '20px', fontSize: '0.78rem', fontWeight: '600'
+                                                                background: '#DCFCE7', color: '#16A34A', padding: '3px 12px',
+                                                                borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600'
                                                             }}>
                                                                 Completed
                                                             </span>
@@ -478,16 +526,16 @@ const Dashboard = () => {
                                                                         url: item.url || item.img
                                                                     })}
                                                                     style={{
-                                                                        width: '36px', height: '36px', borderRadius: '10px',
-                                                                        border: '1px solid #E5E5E5', background: 'white',
+                                                                        width: '32px', height: '32px', borderRadius: '8px',
+                                                                        border: '1px solid #E2E8F0', background: 'white',
                                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                        cursor: 'pointer', color: '#444', transition: 'all 0.2s'
+                                                                        cursor: 'pointer', color: '#475569', transition: 'all 0.2s'
                                                                     }}
                                                                     title="View Image"
-                                                                    onMouseOver={e => e.currentTarget.style.background='#F5F5F5'}
+                                                                    onMouseOver={e => e.currentTarget.style.background='#F1F5F9'}
                                                                     onMouseOut={e => e.currentTarget.style.background='white'}
                                                                 >
-                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                                                         <circle cx="12" cy="12" r="3"></circle>
                                                                     </svg>
@@ -495,16 +543,16 @@ const Dashboard = () => {
                                                                 <button
                                                                     onClick={(e) => copyTextToClipboard(item.url || item.img, e.currentTarget)}
                                                                     style={{
-                                                                        width: '36px', height: '36px', borderRadius: '10px',
-                                                                        border: '1px solid #E5E5E5', background: 'white',
+                                                                        width: '32px', height: '32px', borderRadius: '8px',
+                                                                        border: '1px solid #E2E8F0', background: 'white',
                                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                        cursor: 'pointer', color: '#444', transition: 'all 0.2s'
+                                                                        cursor: 'pointer', color: '#475569', transition: 'all 0.2s'
                                                                     }}
                                                                     title="Copy Link"
-                                                                    onMouseOver={e => { if (e.currentTarget.style.background !== 'rgb(220, 252, 231)') e.currentTarget.style.background='#F5F5F5'; }}
+                                                                    onMouseOver={e => { if (e.currentTarget.style.background !== 'rgb(220, 252, 231)') e.currentTarget.style.background='#F1F5F9'; }}
                                                                     onMouseOut={e => { if (e.currentTarget.style.background !== 'rgb(220, 252, 231)') e.currentTarget.style.background='white'; }}
                                                                 >
-                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                                                                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                                                                     </svg>
@@ -522,14 +570,16 @@ const Dashboard = () => {
                                         <span style={{ fontSize: '0.9rem', color: '#888', fontWeight: '500', whiteSpace: 'nowrap' }}>
                                             {uploadQueue.length} of {uploadQueue.length} files uploaded
                                         </span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
                                             <button
                                                 onClick={() => setUploadQueue([])}
                                                 style={{
                                                     background: 'none', border: 'none', color: '#666',
                                                     fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer',
-                                                    whiteSpace: 'nowrap'
+                                                    whiteSpace: 'nowrap', padding: '8px 10px'
                                                 }}
+                                                onMouseOver={e => e.currentTarget.style.color='#1A1A1A'}
+                                                onMouseOut={e => e.currentTarget.style.color='#666'}
                                             >
                                                 Clear all
                                             </button>
@@ -542,17 +592,32 @@ const Dashboard = () => {
                                                     alignItems: 'center', justifyContent: 'center', gap: '8px',
                                                     whiteSpace: 'nowrap', flexShrink: 0,
                                                     boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-                                                    transition: 'background 0.2s'
+                                                    transition: 'all 0.2s'
                                                 }}
                                                 onMouseOver={e => e.currentTarget.style.background='#4f46e5'}
                                                 onMouseOut={e => e.currentTarget.style.background='#6366f1'}
                                             >
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                                    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>
-                                                    <polyline points="16 16 12 12 8 16"/>
-                                                    <line x1="12" y1="12" x2="12" y2="21"/>
-                                                </svg>
-                                                <span style={{ whiteSpace: 'nowrap' }}>Upload more</span>
+                                                <Upload size={18} />
+                                                <span style={{ whiteSpace: 'nowrap' }}>Upload</span>
+                                            </button>
+                                            <button
+                                                onClick={handleSave}
+                                                style={{
+                                                    padding: '10px 22px', 
+                                                    background: saveStatus === 'Saved ✓' ? '#16A34A' : '#10B981', 
+                                                    color: 'white',
+                                                    border: 'none', borderRadius: '12px', fontWeight: '600',
+                                                    fontSize: '0.9rem', cursor: 'pointer', display: 'inline-flex',
+                                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                                    whiteSpace: 'nowrap', flexShrink: 0,
+                                                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseOver={e => { if (saveStatus !== 'Saved ✓') e.currentTarget.style.background='#059669'; }}
+                                                onMouseOut={e => { if (saveStatus !== 'Saved ✓') e.currentTarget.style.background='#10B981'; }}
+                                            >
+                                                {saveStatus === 'Saved ✓' ? <Check size={18} /> : <Save size={18} />}
+                                                <span style={{ whiteSpace: 'nowrap' }}>{saveStatus}</span>
                                             </button>
                                         </div>
                                     </div>
@@ -643,9 +708,18 @@ const Dashboard = () => {
                             
                             return (
                             <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <div className="bid-img" onClick={() => navigate(`/image/${item.id}`)} style={{ height: '180px', position: 'relative', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
-                                    <img src={item.img} alt="Uploaded Item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    
+                                <div 
+                                    className="card-img-container" 
+                                    onClick={() => setPreviewModalImage({
+                                        id: item.id,
+                                        title: item.title || item.name || 'Uploaded Image',
+                                        img: item.img || item.url,
+                                        url: item.url || item.img
+                                    })}
+                                >
+                                    <img src={item.img} alt={item.title || "Uploaded Item"} />
+
+                                    {/* Top-Right Selection Checkbox */}
                                     <div 
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -664,11 +738,12 @@ const Dashboard = () => {
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             color: 'white', fontWeight: 'bold', fontSize: '0.75rem',
                                             boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                                            zIndex: 5
+                                            zIndex: 6
                                         }}>
                                         {selectedItems.includes(item.id) && '✓'}
                                     </div>
                                     
+                                    {/* Bottom-Right Save/Heart Button */}
                                     <button 
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -685,15 +760,71 @@ const Dashboard = () => {
                                             position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', 
                                             border: 'none', borderRadius: '50%', width: '30px', height: '30px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            cursor: 'pointer', color: isSaved ? '#FF4D4F' : 'rgba(255,255,255,0.7)', fontSize: '1rem', transition: 'color 0.2s'
+                                            cursor: 'pointer', color: isSaved ? '#FF4D4F' : 'rgba(255,255,255,0.7)', fontSize: '1rem', transition: 'color 0.2s',
+                                            zIndex: 6
                                         }}
                                         title="Save Item"
                                     >
                                         ♥
                                     </button>
+
+                                    {/* Center Hover Overlay with Eye and Copy Link Buttons */}
+                                    <div className="card-hover-overlay">
+                                        <button 
+                                            className="card-hover-eye-btn" 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPreviewModalImage({
+                                                    id: item.id,
+                                                    title: item.title || item.name || 'Uploaded Image',
+                                                    img: item.img || item.url,
+                                                    url: item.url || item.img
+                                                });
+                                            }}
+                                        >
+                                            <Eye size={22} strokeWidth={2.3} />
+                                        </button>
+
+                                        <button 
+                                            className="card-hover-copy-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const copyText = item.url || item.img;
+                                                const btn = e.currentTarget;
+                                                const copy = (text) => {
+                                                    if (navigator.clipboard && window.isSecureContext) {
+                                                        return navigator.clipboard.writeText(text);
+                                                    } else {
+                                                        const ta = document.createElement('textarea');
+                                                        ta.value = text;
+                                                        ta.style.position = 'fixed';
+                                                        ta.style.opacity = '0';
+                                                        document.body.appendChild(ta);
+                                                        ta.focus(); ta.select();
+                                                        document.execCommand('copy');
+                                                        document.body.removeChild(ta);
+                                                        return Promise.resolve();
+                                                    }
+                                                };
+                                                copy(copyText).then(() => {
+                                                    btn.textContent = '✓ Copied!';
+                                                    btn.style.background = '#10B981';
+                                                    btn.style.color = '#FFFFFF';
+                                                    setTimeout(() => {
+                                                        btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>Copy Link';
+                                                        btn.style.background = 'rgba(255, 255, 255, 0.95)';
+                                                        btn.style.color = '#1E293B';
+                                                    }, 1800);
+                                                });
+                                            }}
+                                        >
+                                            <LinkIcon size={13} strokeWidth={2.2} />
+                                            Copy Link
+                                        </button>
+                                    </div>
                                 </div>
                                 
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                                     <button 
                                         onClick={() => setPreviewModalImage({
                                             id: item.id,
@@ -702,13 +833,16 @@ const Dashboard = () => {
                                             url: item.url || item.img
                                         })}
                                         style={{
-                                            flex: 1, padding: '8px 12px', background: '#6366f1', color: 'white',
-                                            border: 'none', borderRadius: '8px', fontWeight: '600',
-                                            fontSize: '0.8rem', cursor: 'pointer', transition: 'background 0.2s'
+                                            flex: 1, padding: '5px 8px', height: '30px', background: '#6366f1', color: 'white',
+                                            border: 'none', borderRadius: '6px', fontWeight: '600',
+                                            fontSize: '0.72rem', cursor: 'pointer', transition: 'background 0.2s',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                                            whiteSpace: 'nowrap'
                                         }}
                                         onMouseOver={e => e.currentTarget.style.background='#4f46e5'}
                                         onMouseOut={e => e.currentTarget.style.background='#6366f1'}
                                     >
+                                        <Eye size={13} />
                                         View Image
                                     </button>
                                     <button 
@@ -744,9 +878,11 @@ const Dashboard = () => {
                                             });
                                         }}
                                         style={{
-                                            flex: 1, padding: '8px 12px', background: 'white', color: '#333',
-                                            border: '1px solid #E5E5E5', borderRadius: '8px', fontWeight: '600',
-                                            fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
+                                            flex: 1, padding: '5px 8px', height: '30px', background: 'white', color: '#333',
+                                            border: '1px solid #E5E5E5', borderRadius: '6px', fontWeight: '600',
+                                            fontSize: '0.72rem', cursor: 'pointer', transition: 'all 0.2s',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            whiteSpace: 'nowrap'
                                         }}
                                         onMouseOver={e => { if (e.currentTarget.textContent !== '✓ Copied!') e.currentTarget.style.background='#F5F5F5'; }}
                                         onMouseOut={e => { if (e.currentTarget.textContent !== '✓ Copied!') e.currentTarget.style.background='white'; }}
@@ -1069,6 +1205,30 @@ const Dashboard = () => {
                                             Download
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* Floating Toast Notification for Save */}
+                    {toastMessage && (
+                        <div style={{
+                            position: 'fixed', bottom: '30px', right: '30px',
+                            background: '#0F172A', color: 'white', padding: '14px 22px',
+                            borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                            display: 'flex', alignItems: 'center', gap: '12px', zIndex: 99999,
+                            fontSize: '0.9rem', fontWeight: '600', animation: 'fadeIn 0.3s'
+                        }}>
+                            <div style={{
+                                width: '24px', height: '24px', borderRadius: '50%',
+                                background: '#16A34A', color: 'white', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold'
+                            }}>
+                                ✓
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: '700', color: 'white' }}>{toastMessage.title}</div>
+                                <div style={{ fontSize: '0.78rem', color: '#94A3B8', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                                    {toastMessage.detail}
                                 </div>
                             </div>
                         </div>

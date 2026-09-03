@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
+import Logo from '../components/Logo';
 import { 
   Home, 
   Image as ImageIcon, 
@@ -117,10 +118,9 @@ const Trash = () => {
         <div className="dashboard-layout">
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} id="sidebar">
                 <div className="sidebar-header">
-                    <div className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div className="logo-icon" style={{ width: "32px", height: "32px" }}></div>
-                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "#6366f1" }}>Lumina</span>
-                    </div>
+                    <Link to="/dashboard" className="logo" style={{ padding: '0', display: 'flex', alignItems: 'center', textDecoration: 'none', width: '100%' }}>
+                        <Logo height={38} />
+                    </Link>
                 </div>
                 
                 <nav className="sidebar-nav">
